@@ -1,9 +1,10 @@
 /*
 	by liz
 */
+
 ;(function(exports, undefined){
 
-var zita = {};
+var zita = exports.zita = {};
 
 zita.each = function(obj, callback){
 	var i = 0, j, key;
