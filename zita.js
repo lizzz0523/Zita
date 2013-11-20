@@ -6,6 +6,9 @@
 
 var zita = exports.zita = {};
 
+
+// array or object
+
 zita.each = function(obj, callback){
 	var i = 0, j, key;
 
@@ -51,9 +54,11 @@ zita.value = function(obj){
 	return res;
 }
 
+
+// function
+
 zita.debounce = function(callback, delay){
-	var timer = null,
-		cb = callback;
+	var timer = null;
 
 	function clear(){
 		clearTimeout(timer);
@@ -75,6 +80,37 @@ zita.debounce = function(callback, delay){
 		timer && clear();
 		timer = setTimeout(callback, delay);
 	}
+}
+
+
+// dom and cssom
+
+zita.contains = function(root, node){
+	var cur;
+
+	if(!node || !node.nodeType || node.nodeType != 1) return false;
+
+	if(root.contains){
+		return root.contains(node);
+	}
+
+	if(root.compareDocumentPosition){
+		// DOCUMENT_POSITION_DISCONNECTED            1
+		// DOCUMENT_POSITION_PRECEDING               2
+		// DOCUMENT_POSITION_FOLLOWING               4
+		// DOCUMENT_POSITION_CONTAINS                8
+		// DOCUMENT_POSITION_CONTAINED_BY            16
+		// DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC 32
+		return !!(root.compareDocumentPosition(node) & 16);
+	}
+
+	cur = node;
+	while(cur){
+		if(cur == root) return true;
+		cur = node.parentNode;
+	}
+
+	return false;
 }
 
 
