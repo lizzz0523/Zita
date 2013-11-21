@@ -10,23 +10,27 @@ var zita = exports.zita = {};
 // array or object
 
 zita.each = function(obj, callback){
-	var i = 0, j, key;
+	var i = 0, key;
 
 	if(obj == null) return;
 
+	if(obj.forEach){
+		obj.forEach(function(){
+			return callback.apply(zita, arguments);
+		})
+
+		return;
+	}
+
 	if(obj.length){
 		// if obj is array
-
-		j = obj.length;
-		for(; i < j; i++){
+		for(; i < obj.length; i++){
 			if(callback.call(zita, i, obj[i], obj) === false) break;
 		}
 	}else{
 		// if obj is object
-
 		key = zita.key(obj);
-		j = key.length;
-		for(; i < j; i++){
+		for(; i < key.length; i++){
 			if(callback.call(zita, key[i], obj[key[i]], obj) === false) break;
 		}
 	}
@@ -218,7 +222,9 @@ zita.Ticker = (function(){
 
 	return {
 		add : function(callback, context){
-			callback.tickId = callback.tickId || 'tick-' + tickId++;
+			if(callback.tickId) return;
+
+			callback.tickId = 'tick-' + tickId++;
 			tickers.push({
 				callback : callback,
 				context : context || win
@@ -240,6 +246,7 @@ zita.Ticker = (function(){
 					ticker = tickers[i];
 					if(callback.tickId == ticker.callback.tickId){
 						tickers.splice(i, 1);
+						delete callback.tickId;
 						break;
 					}
 				}
