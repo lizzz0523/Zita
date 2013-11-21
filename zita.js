@@ -82,6 +82,43 @@ zita.debounce = function(callback, delay){
 	}
 }
 
+zita.pulse = function(callback, period, delay){
+	var timer = null,
+		endtime, active;
+
+	function now(){
+		return (new Date).getTime();
+	}
+
+	function clear(){
+		clearInterval(timer);
+		timer = null;
+		active = false;
+	}
+
+	delay = delay || 200;
+	period = period || 1000;
+
+	return function(){
+		var orig = callback,
+			context = this,
+			args = arguments;
+
+		callback = function(){
+			orig.apply(context, args);
+			if(now() > endtime){
+				clear();
+			}
+		}
+
+		endtime = now() + period;
+		if(!active){
+			active = true;
+			timer = setInterval(callback, delay);
+		}
+	}
+}
+
 
 // dom and cssom
 
