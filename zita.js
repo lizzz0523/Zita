@@ -15,11 +15,15 @@ zita.each = function(obj, callback){
 	if(obj == null) return;
 
 	if(obj.length){
+		// if obj is array
+
 		j = obj.length;
 		for(; i < j; i++){
 			if(callback.call(zita, i, obj[i], obj) === false) break;
 		}
 	}else{
+		// if obj is object
+
 		key = zita.key(obj);
 		j = key.length;
 		for(; i < j; i++){
@@ -149,6 +153,105 @@ zita.contains = function(root, node){
 
 	return false;
 }
+
+
+// tools
+
+zita.Ticker = (function(){
+
+	var win = exports,
+
+		tickId = 0,
+		tickers = [],
+
+		timerId = null,
+
+		requestAnimFrame,
+		cancelAnimFrame,
+
+		settings = {
+			useRAF : true,
+			interval : 1000 / 60
+		};
+	
+	(function(){
+		var vendors = ' ms moz webkit o'.split(' '),
+			i = 0,
+			len = vendors.length;
+
+		if(settings.useRAF){
+			for(; i < len && !requestAnimFrame; i++){
+				requestAnimFrame = win[vendors[i] + 'RequestAnimationFrame'];
+				cancelAnimFrame = win[vendors[i] + 'CancelAnimationFrame'] || win[vendors[i] + 'CancelRequestAnimationFrame'];
+			}
+		}
+
+		requestAnimFrame || (requestAnimFrame = function(callback){
+			return win.setTimeout(callback, settings.interval);
+		});
+
+		cancelAnimFrame || (cancelAnimFrame = function(timerId){
+			return win.clearTimeout(timerId);
+		});
+	})();
+	
+	function tick(){
+		var ticker,
+			i = 0,
+			len = tickers.length;
+			
+		for(; i < len; i++){
+			ticker = tickers[i];
+			ticker.callback.call(ticker.context);
+		}
+	}
+
+	function run(){
+		timerId = requestAnimFrame(arguments.callee);
+		tick();
+	}
+	
+	function stop(){
+		cancelAnimFrame(timerId);
+		timerId = null;
+	}
+
+	return {
+		add : function(callback, context){
+			callback.tickId = callback.tickId || 'tick-' + tickId++;
+			tickers.push({
+				callback : callback,
+				context : context || win
+			});
+
+			if(tickers.length == 1) run();
+		},
+		remove : function(callback){
+			var ticker,
+				i = 0,
+				len = runers.length;
+
+			if(!callback){
+				tickers = [];
+			}else{
+				if(!callback.tickId) return;
+
+				for(; i < len; i++){
+					ticker = tickers[i];
+					if(callback.tickId == ticker.callback.tickId){
+						tickers.splice(i, 1);
+						break;
+					}
+				}
+			}
+			
+			if(!tickers.length){
+				stop();
+			}
+		}
+	}
+		
+})();
 
 
 })(window);
