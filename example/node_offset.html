@@ -1,0 +1,44 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+<title>Zita:node_offset</title>
+<style>
+	* {
+		margin: 0;
+		padding: 0;
+	}
+
+	#wraper {
+		position: relative;
+		padding-left: 100px;
+		padding-top: 3000px;
+		border: 10px solid red;
+	}
+
+	#rect {
+		position: relative;
+		left: 25px;
+		top: 30px;
+		border: 10px solid red;
+		width: 100px;
+		height: 100px;
+		background: red;
+	}
+</style>
+</head>
+<body>
+<div id="wraper">
+	<div id="rect"></div>
+</div>
+<script type="text/javascript" src="../zita.js"></script>
+<script type="text/javascript">
+window.onscroll = zita.debounce(function(){
+	var node = zita.Node(document.getElementById('rect'));
+	var offset = node.offset();
+	alert('offset-left: ' + offset.left);
+	alert('offset-top: ' + offset.top);
+}, 1000);
+</script>
+</body>
+</html>

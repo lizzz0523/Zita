@@ -130,33 +130,128 @@ zita.pulse = function(callback, period, delay){
 
 // dom and cssom
 
-zita.contains = function(root, node){
-	var cur;
+zita.Node = (function(){
 
-	if(!node || !node.nodeType || node.nodeType != 1) return false;
+	var win = window,
+		doc = document,
+		docRoot = doc.documentElement,
+		body = doc.body;
 
-	if(root.contains){
-		return root.contains(node);
+	function getElementNode(node){
+		if(node && node.nodeType){
+			if(node.nodeType == 3){
+				node = node.parentNode;
+			}
+
+			return node;
+		}
+
+		if(node && node.zita){
+			return node.self;
+		}
+
+		return false
 	}
 
-	if(root.compareDocumentPosition){
-		// DOCUMENT_POSITION_DISCONNECTED            1
-		// DOCUMENT_POSITION_PRECEDING               2
-		// DOCUMENT_POSITION_FOLLOWING               4
-		// DOCUMENT_POSITION_CONTAINS                8
-		// DOCUMENT_POSITION_CONTAINED_BY            16
-		// DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC 32
-		return !!(root.compareDocumentPosition(node) & 16);
+	function Node(node){
+		if(node.length){
+			node = node[0];
+		}
+
+		if(!(node = getElementNode(node))){
+			throw Error('not element node');
+		}
+
+		this.self = node;
 	}
 
-	cur = node;
-	while(cur){
-		if(cur == root) return true;
-		cur = node.parentNode;
+	Node.fn = Node.prototype = {
+		zita : '0.0.1'
 	}
 
-	return false;
-}
+	Node.fn.contains = function(node){
+		var self = this.self,
+			cur;
+
+		if(!(node = getElementNode(node))) return false;
+
+		if(self.contains){
+			return self.contains(node);
+		}
+
+		if(self.compareDocumentPosition){
+			// DOCUMENT_POSITION_DISCONNECTED            1
+			// DOCUMENT_POSITION_PRECEDING               2
+			// DOCUMENT_POSITION_FOLLOWING               4
+			// DOCUMENT_POSITION_CONTAINS                8
+			// DOCUMENT_POSITION_CONTAINED_BY            16
+			// DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC 32
+			return !!(self.compareDocumentPosition(node) & 16);
+		}
+
+		cur = node;
+		while(cur){
+			if(cur == self) return true;
+			cur = node.parentNode;
+		}
+
+		return false;
+	}
+
+	Node.fn.offset = function(){
+		var self = this.self,
+			cur, offsetParent,
+			crect,
+			rect = null;
+
+		if(self.getBoundingClientRect){
+			crect = self.getBoundingClientRect();
+			rect = {};
+
+			zita.each('left top'.split(' '), function(dir){
+				// firefox not round the top and bottom
+				if(crect[dir] === undefined){
+					rect = null;
+					return false;
+				}
+				rect[dir] = crect[dir];
+			});
+		}
+
+		if(!rect){
+			offsetParent = self.offsetParent;
+			rect = {
+				left : self.offsetLeft,
+				top : self.offsetTop
+			};
+
+			cur = self;
+			while((cur = cur.parentNode) && cur != body){
+				rect.left -= cur.scrollLeft;
+				rect.top += cur.scrollTop;
+
+				if(cur == offsetParent){
+					// use clientLeft/Top to replace calculating elem border width
+					rect.left += cur.offsetLeft + cur.clientLeft;
+					rect.top += cur.offsetTop + cur.clientTop;
+
+					offsetParent = cur.offsetParent;
+				}
+			}
+		}else{
+			// subtract clientLeft/Top to correct double counting
+			rect.left += (win.pageXOffset || docRoot.scrollLeft) - docRoot.clientLeft;
+			rect.top += (win.pageYOffset || docRoot.scrollTop) - docRoot.clientTop;
+		}
+
+		return rect;
+	}
+
+	return function(node){
+		return new Node(node);
+	};
+
+})();
 
 
 // tools
@@ -165,6 +260,7 @@ zita.Ticker = (function(){
 
 	var win = exports,
 
+		// internal identity is used to mark a registered function
 		tickId = 0,
 		tickers = [],
 
@@ -222,6 +318,7 @@ zita.Ticker = (function(){
 
 	return {
 		add : function(callback, context){
+			// if the callback function has registered, skip it
 			if(callback.tickId) return;
 
 			callback.tickId = 'tick-' + tickId++;
@@ -231,6 +328,8 @@ zita.Ticker = (function(){
 			});
 
 			if(tickers.length == 1) run();
+
+			return callback;
 		},
 		remove : function(callback){
 			var ticker,
@@ -245,7 +344,7 @@ zita.Ticker = (function(){
 				for(; i < len; i++){
 					ticker = tickers[i];
 					if(callback.tickId == ticker.callback.tickId){
-						tickers.splice(i, 1);
+						callback = tickers.splice(i, 1);
 						delete callback.tickId;
 						break;
 					}
@@ -255,6 +354,8 @@ zita.Ticker = (function(){
 			if(!tickers.length){
 				stop();
 			}
+
+			return callback;
 		}
 	}
 		

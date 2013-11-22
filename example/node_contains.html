@@ -16,11 +16,12 @@
 <div id="another"></div>
 <script type="text/javascript" src="../zita.js"></script>
 <script type="text/javascript">
-	var child = document.getElementById('child');
-	var another = document.getElementById('another');
+	var body = zita.Node(document.body);
+	var another = zita.Node(document.getElementById('another'));
+	var child = zita.Node(document.getElementById('child'));
 
-	console.log('body->child: ' + zita.contains(document.body, child));
-	console.log('another->child: ' + zita.contains(another, child));
+	console.log('body->child: ' + body.contains(child));
+	console.log('another->child: ' + another.contains(child));
 </script>
 </body>
 </html>
