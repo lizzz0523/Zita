@@ -9,6 +9,10 @@ var zita = exports.zita = {};
 
 // array or object
 
+var Slice = function(arr, start, end){
+	return Array.prototype.slice.call(arr, start, end);
+}
+
 zita.each = function(obj, callback){
 	var i = 0, key;
 
@@ -38,7 +42,24 @@ zita.each = function(obj, callback){
 	return;
 }
 
-zita.key = function(obj){
+zita.merge = function(dest, orig){
+	var res = Slice(dest, 1);
+
+	zita.each(orig, function(value){
+		res.push(value);
+	});
+
+	return res;
+}
+
+var IS_DONTENUM_BUG = (function(){
+	for(var prop in {toString : 1}){
+		if(prop == 'toString') return false;
+	}
+	return true;
+})();
+
+zita.keys = function(obj){
 	var res = [],
 		prop;
 	
@@ -47,10 +68,21 @@ zita.key = function(obj){
 		res.push(prop);
 	}
 
+	// fix don't enum bug
+	if(IS_DONTENUM_BUG){
+		if(obj.toString !== Object.prototype.toString){
+			res.push('toString');
+		}
+
+		if(obj.valueOf !== Object.prototype.valueOf){
+			res.push('valueOf');
+		}
+	}
+
 	return res;
 }
 
-zita.value = function(obj){
+zita.values = function(obj){
 	var res = [];
 		prop;
 
@@ -60,6 +92,16 @@ zita.value = function(obj){
 	}
 
 	return res;
+}
+
+zita.extend = function(dest, orig){
+	var keys = zita.keys(orig);
+
+	zita.each(keys, function(key){
+		dest[key] = orig[key];
+	});
+
+	return dest;
 }
 
 
