@@ -4,17 +4,20 @@
 
 ;(function(exports, undefined){
 
-var zita = exports.zita = {};
+var zita = exports.zita = {
+    version : 0.0.1
+};
 
 
 // array or object
 
-var Slice = function(arr, start, end){
+var slice = function(arr, start, end){
     return Array.prototype.slice.call(arr, start, end);
 }
 
 zita.each = function(obj, callback){
-    var i = 0, key;
+    var keys,
+        i = 0;
 
     if(obj == null) return;
 
@@ -33,9 +36,9 @@ zita.each = function(obj, callback){
         }
     }else{
         // if obj is object
-        key = zita.key(obj);
-        for(; i < key.length; i++){
-            if(callback.call(zita, key[i], obj[key[i]], obj) === false) break;
+        keys = zita.keys(obj);
+        for(; i < keys.length; i++){
+            if(callback.call(zita, keys[i], obj[keys[i]], obj) === false) break;
         }
     }
 
@@ -43,11 +46,13 @@ zita.each = function(obj, callback){
 }
 
 zita.merge = function(dest, orig){
-    var res = Slice(dest, 1);
+    var res = slice(dest, 1),
+        offset = res.length,
+        i = 0;
 
-    zita.each(orig, function(value){
-        res.push(value);
-    });
+    for(; i < res.length; i++){
+        res[offset + i] = orig[i];
+    }
 
     return res;
 }
@@ -91,21 +96,41 @@ zita.values = function(obj){
         res.push(obj[prop]);
     }
 
+    // fix don't enum bug
+    if(IS_DONTENUM_BUG){
+        if(obj.toString !== Object.prototype.toString){
+            res.push(obj.toString);
+        }
+
+        if(obj.valueOf !== Object.prototype.valueOf){
+            res.push(obj.valueOf);
+        }
+    }
+
     return res;
 }
 
 zita.extend = function(dest, orig){
-    var keys = zita.keys(orig);
+    var keys = zita.keys(orig),
+        i = 0;
 
-    zita.each(keys, function(key){
-        dest[key] = orig[key];
+    for(; i < keys.length; i++){
+        dest[keys[i]] = orig[keys[i]];
     });
 
     return dest;
 }
 
+zita.clone = function(orig){
+    return zita.extend({}, orig);
+}
+
 
 // function
+
+var now = Date.now || function(){
+    return (new Date).getTime();
+}
 
 zita.debounce = function(callback, delay){
     var timer = null;
@@ -135,10 +160,6 @@ zita.debounce = function(callback, delay){
 zita.pulse = function(callback, period, delay){
     var timer = null,
         endtime, active;
-
-    function now(){
-        return (new Date).getTime();
-    }
 
     function clear(){
         clearInterval(timer);
@@ -208,7 +229,7 @@ zita.Node = (function(){
     }
 
     Node.fn = Node.prototype = {
-        zita : '0.0.1'
+        zita : zita.version
     }
 
     Node.fn.contains = function(node){
