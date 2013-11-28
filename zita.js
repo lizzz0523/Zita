@@ -397,7 +397,7 @@ zita.Ticker = (function(){
         remove : function(callback){
             var ticker,
                 i = 0,
-                len = runers.length;
+                len = tickers.length;
 
             if(!callback){
                 tickers = [];
