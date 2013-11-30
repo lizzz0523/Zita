@@ -15,48 +15,6 @@ var slice = function(arr, start, end){
     return Array.prototype.slice.call(arr, start, end);
 }
 
-zita.each = function(obj, callback){
-    var keys,
-        i = 0;
-
-    if(obj == null) return;
-
-    if(obj.forEach){
-        obj.forEach(function(){
-            return callback.apply(zita, arguments);
-        })
-
-        return;
-    }
-
-    if(obj.length){
-        // if obj is array
-        for(; i < obj.length; i++){
-            if(callback.call(zita, i, obj[i], obj) === false) break;
-        }
-    }else{
-        // if obj is object
-        keys = zita.keys(obj);
-        for(; i < keys.length; i++){
-            if(callback.call(zita, keys[i], obj[keys[i]], obj) === false) break;
-        }
-    }
-
-    return;
-}
-
-zita.merge = function(dest, orig){
-    var res = slice(dest, 1),
-        offset = res.length,
-        i = 0;
-
-    for(; i < res.length; i++){
-        res[offset + i] = orig[i];
-    }
-
-    return res;
-}
-
 var IS_DONTENUM_BUG = (function(){
     for(var prop in {toString : 1}){
         if(prop == 'toString') return false;
@@ -110,6 +68,48 @@ zita.values = function(obj){
     return res;
 }
 
+var each = zita.each = function(obj, callback){
+    var keys,
+        i = 0;
+
+    if(obj == null) return;
+
+    if(obj.forEach){
+        obj.forEach(function(){
+            return callback.apply(zita, arguments);
+        })
+
+        return;
+    }
+
+    if(obj.length){
+        // if obj is array
+        for(; i < obj.length; i++){
+            if(callback.call(zita, i, obj[i], obj) === false) break;
+        }
+    }else{
+        // if obj is object
+        keys = zita.keys(obj);
+        for(; i < keys.length; i++){
+            if(callback.call(zita, keys[i], obj[keys[i]], obj) === false) break;
+        }
+    }
+
+    return;
+}
+
+zita.merge = function(dest, orig){
+    var res = slice(dest, 1),
+        offset = res.length,
+        i = 0;
+
+    for(; i < res.length; i++){
+        res[offset + i] = orig[i];
+    }
+
+    return res;
+}
+
 zita.extend = function(dest, orig){
     var keys = zita.keys(orig),
         i = 0;
@@ -123,6 +123,38 @@ zita.extend = function(dest, orig){
 
 zita.clone = function(orig){
     return zita.extend({}, orig);
+}
+
+zita.max = function(arr, iterator){
+    var proxy, max,
+        i = 0;
+
+    max = {proxy : -Infinity, value : -Infinity};
+    for(; i < arr.length; i++){
+        proxy = iterator ? iterator.call(zita, arr[i], i) : arr[i];
+        if(proxy > max.proxy){
+            max.proxy = proxy;
+            max.value = arr[i];
+        }
+    }
+
+    return max.value;
+}
+
+zita.min = function(arr, iterator){
+    var proxy, min,
+        i = 0;
+
+    min = {proxy : -Infinity, value : -Infinity};
+    for(; i < arr.length; i++){
+        proxy = iterator ? iterator.call(zita, arr[i], i) : arr[i];
+        if(proxy < min.proxy){
+            min.proxy = proxy;
+            min.value = arr[i];
+        }
+    }
+
+    return min.value;
 }
 
 
@@ -195,8 +227,8 @@ zita.pulse = function(callback, period, delay){
 
 zita.Node = (function(){
 
-    var win = window,
-        doc = document,
+    var win = exports,
+        doc = win.document,
         docRoot = doc.documentElement,
         body = doc.body;
 
