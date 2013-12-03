@@ -77,7 +77,7 @@ var each = zita.each = function(obj, callback){
     if(obj.forEach){
         obj.forEach(function(){
             return callback.apply(zita, arguments);
-        })
+        });
 
         return;
     }
@@ -98,25 +98,23 @@ var each = zita.each = function(obj, callback){
     return;
 }
 
-zita.merge = function(dest, orig){
-    var res = slice(dest, 1),
-        offset = res.length,
-        i = 0;
-
-    for(; i < res.length; i++){
-        res[offset + i] = orig[i];
-    }
-
-    return res;
+zita.merge = function(dest){
+    var args = slice(arguments, 1);
+    return Array.concat.apply(dest, args);
 }
 
-zita.extend = function(dest, orig){
-    var keys = zita.keys(orig),
-        i = 0;
+zita.extend = function(dest){
+    var args = slice(arguments, 1),
+        obj, keys,
+        i, j;
 
-    for(; i < keys.length; i++){
-        dest[keys[i]] = orig[keys[i]];
-    });
+    for(; i < args.length; i++){
+        obj = args[i];
+        keys = zita.keys(obj);
+        for(; j < keys.length; j++){
+            dest[keys[j]] = obj[keys[j]];
+        }
+    }
 
     return dest;
 }
@@ -145,7 +143,7 @@ zita.min = function(arr, iterator){
     var proxy, min,
         i = 0;
 
-    min = {proxy : -Infinity, value : -Infinity};
+    min = {proxy : Infinity, value : Infinity};
     for(; i < arr.length; i++){
         proxy = iterator ? iterator.call(zita, arr[i], i) : arr[i];
         if(proxy < min.proxy){
@@ -220,6 +218,21 @@ zita.pulse = function(callback, period, delay){
             timer = setInterval(callback, delay);
         }
     }
+}
+
+zita.delay = function(callback, delay){
+    var args = slice(arguments, 2);
+
+    delay = delay || 10;
+
+    return setTimeout(function(){
+        callback.apply(zita, args);
+    }, delay);
+}
+
+zita.defer = function(callback){
+    var args = zita.merge([callback, 0.01], slice(arguments, 1));
+    return zita.delay.apply(zita, args);
 }
 
 
