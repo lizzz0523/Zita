@@ -202,6 +202,7 @@ zita.isArray = Array.isArray || function(obj){
     return _type(obj) == 'array';
 };
 
+// fix chrome(1-12) bug and use a faster solution
 zita.isFunction = typeof /./ === 'function'
 ? function(obj){
     return typeof obj === 'function';
@@ -217,7 +218,7 @@ zita.isElement = function(obj){
 
 // function
 
-var now = Date.now || function(){
+var _now = Date.now || function(){
     return (new Date).getTime();
 };
 
@@ -266,12 +267,12 @@ zita.pulse = function(callback, period, delay){
 
         callback = function(){
             orig.apply(context, args);
-            if(now() > endtime){
+            if(_now() > endtime){
                 clear();
             }
         }
 
-        endtime = now() + period;
+        endtime = _now() + period;
         if(!active){
             active = true;
             timer = setInterval(callback, delay);
