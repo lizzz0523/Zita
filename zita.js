@@ -5,15 +5,19 @@
 ;(function(exports, undefined){
 
 var zita = exports.zita = {
-    version : 0.0.1
+    version : '0.0.1'
 };
 
 
 // array or object
 
-var slice = function(arr, start, end){
+var _slice = function(arr, start, end){
     return Array.prototype.slice.call(arr, start, end);
-}
+};
+
+var _string = function(obj){
+    return Object.prototype.toString.call(obj);
+};
 
 var IS_DONTENUM_BUG = (function(){
     for(var prop in {toString : 1}){
@@ -43,7 +47,7 @@ zita.keys = function(obj){
     }
 
     return res;
-}
+};
 
 zita.values = function(obj){
     var res = [];
@@ -66,14 +70,15 @@ zita.values = function(obj){
     }
 
     return res;
-}
+};
 
-var each = zita.each = function(obj, callback){
+var _each = zita.each = function(obj, callback){
     var keys,
         i = 0;
 
     if(obj == null) return;
 
+    // use the native ecmascript 5 each;
     if(obj.forEach){
         obj.forEach(function(){
             return callback.apply(zita, arguments);
@@ -96,15 +101,15 @@ var each = zita.each = function(obj, callback){
     }
 
     return;
-}
+};
 
 zita.merge = function(dest){
-    var args = slice(arguments, 1);
+    var args = _slice(arguments, 1);
     return Array.concat.apply(dest, args);
-}
+};
 
 zita.extend = function(dest){
-    var args = slice(arguments, 1),
+    var args = _slice(arguments, 1),
         obj, keys,
         i, j;
 
@@ -117,11 +122,11 @@ zita.extend = function(dest){
     }
 
     return dest;
-}
+};
 
 zita.clone = function(orig){
     return zita.extend({}, orig);
-}
+};
 
 zita.max = function(arr, iterator){
     var proxy, max,
@@ -137,7 +142,7 @@ zita.max = function(arr, iterator){
     }
 
     return max.value;
-}
+};
 
 zita.min = function(arr, iterator){
     var proxy, min,
@@ -153,14 +158,68 @@ zita.min = function(arr, iterator){
     }
 
     return min.value;
+};
+
+zita.isNaN = Number.isNaN || function(obj){
+    return _type(obj) == 'number' && obj !== obj ;
+};
+
+zita.isFinite = function(obj){
+    return isFinite(obj) && !isNaN(parseFloat(obj));
+};
+
+var _type = zita.type = (function(){
+    var class2type = {};
+
+    _each('Number Boolean String Array Object Function Date RegExp Error'.split(' '), function(type){
+        class2type['[object ' + type + ']'] = type.toLowerCase();
+    });
+
+    return function(obj){
+        if(obj === null){
+            return String(obj);
+        }
+
+        return typeof obj === 'object' || typeof obj === 'function'
+            ? class2type[_string(obj)] || "object"
+            : typeof obj;
+    }
+})();
+
+_each('Number Boolean String Date RegExp'.split(' '), function(type){
+    zita['is' + type] = function(obj){ return _type(obj) === type.toLowerCase(); };
+});
+
+zita.isUndefined = function(obj){
+    return obj === void 0;
+};
+
+zita.isNull = function(obj){
+    return obj === null;
+};
+
+zita.isArray = Array.isArray || function(obj){
+    return _type(obj) == 'array';
+};
+
+zita.isFunction = typeof /./ === 'function'
+? function(obj){
+    return typeof obj === 'function';
 }
+: function(obj){
+    return _type(obj) === 'function';
+};
+
+zita.isElement = function(obj){
+    return obj != null && obj.nodeType && obj.nodeType == 1;
+};
 
 
 // function
 
 var now = Date.now || function(){
     return (new Date).getTime();
-}
+};
 
 zita.debounce = function(callback, delay){
     var timer = null;
@@ -185,7 +244,7 @@ zita.debounce = function(callback, delay){
         timer && clear();
         timer = setTimeout(callback, delay);
     }
-}
+};
 
 zita.pulse = function(callback, period, delay){
     var timer = null,
@@ -218,22 +277,22 @@ zita.pulse = function(callback, period, delay){
             timer = setInterval(callback, delay);
         }
     }
-}
+};
 
 zita.delay = function(callback, delay){
-    var args = slice(arguments, 2);
+    var args = _slice(arguments, 2);
 
     delay = delay || 10;
 
     return setTimeout(function(){
         callback.apply(zita, args);
     }, delay);
-}
+};
 
 zita.defer = function(callback){
-    var args = zita.merge([callback, 0.01], slice(arguments, 1));
+    var args = zita.merge([callback, 0.01], _slice(arguments, 1));
     return zita.delay.apply(zita, args);
-}
+};
 
 
 // dom and cssom
@@ -258,7 +317,7 @@ zita.Node = (function(){
             return node.self;
         }
 
-        return false
+        return false;
     }
 
     function Node(node){
@@ -316,7 +375,7 @@ zita.Node = (function(){
             crect = self.getBoundingClientRect();
             rect = {};
 
-            zita.each('left top'.split(' '), function(dir){
+            _each('left top'.split(' '), function(dir){
                 // firefox not round the top and bottom
                 if(crect[dir] === undefined){
                     rect = null;
@@ -465,7 +524,7 @@ zita.Ticker = (function(){
 
             return callback;
         }
-    }
+    };
 
 })();
 
