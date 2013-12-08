@@ -213,7 +213,7 @@ zita.isArray = Array.isArray || function(obj){
 };
 
 // fix chrome(1-12) bug and use a faster solution
-zita.isFunction = typeof /./ === 'function'
+zita.isFunction = typeof /./ !== 'function'
 ? function(obj){
     return typeof obj === 'function';
 }
