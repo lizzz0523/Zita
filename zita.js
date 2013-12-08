@@ -9,6 +9,15 @@ var zita = exports.zita = {
 };
 
 
+// class
+
+zita.extend = function(dest){
+    /*
+        todo: class extend
+    */
+};
+
+
 // array or object
 
 var _slice = function(arr, start, end){
@@ -104,20 +113,19 @@ var _each = zita.each = function(obj, callback){
 };
 
 zita.merge = function(dest){
-    var args = _slice(arguments, 1);
-    return Array.concat.apply(dest, args);
-};
-
-zita.extend = function(dest){
     var args = _slice(arguments, 1),
         obj, keys,
         i, j;
 
-    for(; i < args.length; i++){
-        obj = args[i];
-        keys = zita.keys(obj);
-        for(; j < keys.length; j++){
-            dest[keys[j]] = obj[keys[j]];
+    if(dest.length){
+        dest = Array.concat.apply(dest, args);
+    }else{
+        for(; i < args.length; i++){
+            obj = args[i];
+            keys = zita.keys(obj);
+            for(; j < keys.length; j++){
+                dest[keys[j]] = obj[keys[j]];
+            }
         }
     }
 
@@ -125,7 +133,7 @@ zita.extend = function(dest){
 };
 
 zita.clone = function(orig){
-    return zita.extend({}, orig);
+    return zita.extend(orig.length ? [] : {}, orig);
 };
 
 zita.max = function(arr, iterator){
@@ -161,11 +169,13 @@ zita.min = function(arr, iterator){
 };
 
 zita.isNaN = Number.isNaN || function(obj){
-    return _type(obj) == 'number' && obj !== obj ;
+    return _type(obj) === 'number' && obj !== obj ;
 };
 
 zita.isFinite = function(obj){
-    return isFinite(obj) && !isNaN(parseFloat(obj));
+    // !isNaN(parseFloat(obj)) for numeric check
+    // isFinite(obj) for finite check
+    return !isNaN(parseFloat(obj)) && isFinite(obj);
 };
 
 var _type = zita.type = (function(){
