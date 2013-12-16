@@ -133,7 +133,7 @@ zita.merge = function(dest){
 };
 
 zita.clone = function(orig){
-    return zita.extend(orig.length ? [] : {}, orig);
+    return zita.merge(orig.length ? [] : {}, orig);
 };
 
 zita.max = function(arr, iterator){
@@ -306,135 +306,43 @@ zita.defer = function(callback){
 };
 
 
-// dom and cssom
+// tools
 
-zita.Node = (function(){
+zita.queue = (function(){
+    var queues = {};
 
-    var win = exports,
-        doc = win.document,
-        docRoot = doc.documentElement,
-        body = doc.body;
+    return {
+        add : function(name, callback){
+            var queue = queues[name] || (queues[name] = []);
 
-    function getElementNode(node){
-        if(node && node.nodeType){
-            if(node.nodeType == 3){
-                node = node.parentNode;
+            if(zita.isArray(callback)){
+                queues[name] = zita.clone(callback);
+            }else{
+                queue.push(callback);
             }
 
-            return node;
-        }
+            return queue;
+        },
+        next : function(name){
+            var queue = queues[name],
+                callback;
 
-        if(node && node.zita){
-            return node.self;
-        }
-
-        return false;
-    }
-
-    function Node(node){
-        if(node.length){
-            node = node[0];
-        }
-
-        if(!(node = getElementNode(node))){
-            throw Error('not element node');
-        }
-
-        this.self = node;
-    }
-
-    Node.fn = Node.prototype = {
-        zita : zita.version
-    }
-
-    Node.fn.contains = function(node){
-        var self = this.self,
-            cur;
-
-        if(!(node = getElementNode(node))) return false;
-
-        if(self.contains){
-            return self.contains(node);
-        }
-
-        if(self.compareDocumentPosition){
-            // DOCUMENT_POSITION_DISCONNECTED            1
-            // DOCUMENT_POSITION_PRECEDING               2
-            // DOCUMENT_POSITION_FOLLOWING               4
-            // DOCUMENT_POSITION_CONTAINS                8
-            // DOCUMENT_POSITION_CONTAINED_BY            16
-            // DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC 32
-            return !!(self.compareDocumentPosition(node) & 16);
-        }
-
-        cur = node;
-        while(cur){
-            if(cur == self) return true;
-            cur = node.parentNode;
-        }
-
-        return false;
-    }
-
-    Node.fn.offset = function(){
-        var self = this.self,
-            cur, offsetParent,
-            crect,
-            rect = null;
-
-        if(self.getBoundingClientRect){
-            crect = self.getBoundingClientRect();
-            rect = {};
-
-            _each('left top'.split(' '), function(dir){
-                // firefox not round the top and bottom
-                if(crect[dir] === undefined){
-                    rect = null;
-                    return false;
-                }
-                rect[dir] = crect[dir];
-            });
-        }
-
-        if(!rect){
-            offsetParent = self.offsetParent;
-            rect = {
-                left : self.offsetLeft,
-                top : self.offsetTop
-            };
-
-            cur = self;
-            while((cur = cur.parentNode) && cur != body){
-                rect.left -= cur.scrollLeft;
-                rect.top += cur.scrollTop;
-
-                if(cur == offsetParent){
-                    // use clientLeft/Top to replace calculating elem border width
-                    rect.left += cur.offsetLeft + cur.clientLeft;
-                    rect.top += cur.offsetTop + cur.clientTop;
-
-                    offsetParent = cur.offsetParent;
-                }
+            if(!queue) return;
+            
+            callback = queue.shift();
+            if(callback){
+                callback.call(zita)
             }
-        }else{
-            // subtract clientLeft/Top to correct double counting
-            rect.left += (win.pageXOffset || docRoot.scrollLeft) - docRoot.clientLeft;
-            rect.top += (win.pageYOffset || docRoot.scrollTop) - docRoot.clientTop;
+
+            if(!queue.length){
+                delete queues[name]
+            }
         }
-
-        return rect;
-    }
-
-    return function(node){
-        return new Node(node);
     };
 
 })();
 
-
-// tools
-
-zita.Ticker = (function(){
+zita.ticker = (function(){
 
     var win = exports,
 
