@@ -357,8 +357,6 @@ zita.ticker = (function(){
 
     var win = exports,
 
-        // internal identity is used to mark a registered function
-        tickId = 0,
         tickers = [],
 
         timerId = null,
@@ -418,7 +416,7 @@ zita.ticker = (function(){
             // if the callback function has registered, skip it
             if(callback.tickId) return;
 
-            callback.tickId = 'tick-' + tickId++;
+            callback.tickId = 'tick-' + zita.guid();
             tickers.push({
                 callback : callback,
                 context : context || win
