@@ -228,6 +228,35 @@ zita.isElement = function(obj){
 
 // function
 
+(function(){
+
+var callbacks = {};
+
+zita.bind = function(callback, context){
+    var args = slice(arguments, 2),
+        orig = callback;
+
+    // rebind the callback function with different context
+    if(callback.bindId){
+        orig = zita.unbind(callback);
+    }
+
+    callback = function(){
+        return orig.apply(context, zita.merge(args, arguments));
+    };
+
+    callbacks[callback.bindId = 'bind-' + zita.guid()] = orig;
+
+    return callback;
+};
+
+zita.unbind = function(callback){
+    delete callbacks[callback.bindId];
+    return callback.bindId && callbacks[callback.bindId] || callback;
+}
+
+})();
+
 var _now = Date.now || function(){
     return (new Date).getTime();
 };
@@ -348,6 +377,10 @@ zita.queue = (function(){
             if(!queue.length){
                 delete queues[name]
             }
+        },
+        clear : function(name){
+            var queue = queues[name];
+            queue && (delete queues[name]);
         }
     };
 
