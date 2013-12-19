@@ -118,7 +118,7 @@ zita.merge = function(dest){
         i, j;
 
     if(dest.length){
-        dest = Array.concat.apply(dest, args);
+        dest = dest.concat(args);
     }else{
         for(; i < args.length; i++){
             obj = args[i];
@@ -228,34 +228,20 @@ zita.isElement = function(obj){
 
 // function
 
-(function(){
-
-var callbacks = {};
-
 zita.bind = function(callback, context){
-    var args = slice(arguments, 2),
-        orig = callback;
+    var args;
 
-    // rebind the callback function with different context
-    if(callback.bindId){
-        orig = zita.unbind(callback);
+    // make sure browser support the functing binding
+    // and not be overrided
+    if(callback.bind && callback.bind == function.prototype.bind){
+        return callback.bind(_slice(arguments, 1));
     }
 
-    callback = function(){
-        return orig.apply(context, zita.merge(args, arguments));
+    args = _slice(arguments, 2);
+    return function(){
+        return callback.apply(context, zita.merge(args, _slice(arguments)));
     };
-
-    callbacks[callback.bindId = 'bind-' + zita.guid()] = orig;
-
-    return callback;
 };
-
-zita.unbind = function(callback){
-    delete callbacks[callback.bindId];
-    return callback.bindId && callbacks[callback.bindId] || callback;
-}
-
-})();
 
 var _now = Date.now || function(){
     return (new Date).getTime();
