@@ -7,19 +7,13 @@
 <body>
 <script type="text/javascript" src="../zita.js"></script>
 <script type="text/javascript">
-var b = {
-    name : 'I am B',
-    call : function(age){
-        alert(this.name + ', and age ' + age);
-    }
-};
+var b = function(name){
+    this.name = name
+}
 
-var a = {
-    name : 'I am A'
-};
+var c = zita.bind(b, {}, 'liz');
 
-var call = zita.bind(b.call, a, 13);
-call();
+console.log(new c());
 
 </script>
 </body>

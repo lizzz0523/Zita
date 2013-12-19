@@ -112,6 +112,10 @@ var _each = zita.each = function(obj, callback){
     return;
 };
 
+zita.range = function(){
+
+};
+
 zita.merge = function(dest){
     var args = _slice(arguments, 1),
         obj, keys,
@@ -228,20 +232,33 @@ zita.isElement = function(obj){
 
 // function
 
-zita.bind = function(callback, context){
-    var args;
+zita.bind = (function(){
+    var proxy = function(){};
 
-    // make sure browser support the functing binding
-    // and not be overrided
-    if(callback.bind && callback.bind == function.prototype.bind){
-        return callback.bind(_slice(arguments, 1));
-    }
+    return function(callback, context){
+        var args, bound, self;
 
-    args = _slice(arguments, 2);
-    return function(){
-        return callback.apply(context, zita.merge(args, _slice(arguments)));
+        // make sure browser support the functing binding
+        // and not be overrided
+        if(callback.bind && callback.bind == Function.prototype.bind){
+            return Function.prototype.bind.apply(callback,  _slice(arguments, 1));
+        }
+
+        args = _slice(arguments, 2);
+        return bound = function(){
+            if(!(this instanceof bound)) return callback.apply(context, zita.merge(args, _slice(arguments)));
+
+            proxy.prototype = callback.prototype;
+            self = new proxy();
+            proxy.prototype = null;
+
+            callback.apply(self, zita.merge(args, _slice(arguments)));
+            
+            return self;
+        };
     };
-};
+
+})();
 
 var _now = Date.now || function(){
     return (new Date).getTime();
