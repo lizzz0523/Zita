@@ -475,8 +475,11 @@ zita.ticker = (function(){
                 for(; i < len; i++){
                     ticker = tickers[i];
                     if(callback.tickId == ticker.callback.tickId){
-                        callback = tickers.splice(i, 1);
+                        tickers.splice(i, 1);
+                        
+                        callback = ticker.callback;
                         delete callback.tickId;
+                        
                         break;
                     }
                 }
