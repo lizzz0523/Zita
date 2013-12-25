@@ -112,8 +112,24 @@ var _each = zita.each = function(obj, callback){
     return;
 };
 
-zita.range = function(){
+zita.range = function(start, stop, step){
+    var res = [],
+        i, len;
 
+    if(arguments.length <= 1){
+        stop = start;
+        start = 0;
+    }
+    step = step || 1;
+
+    i = start;
+    len = Math.max(Math.ceil((stop - start) / step, 0));
+    while(len--){
+        res.push(start);
+        start += step;
+    };
+
+    return res;
 };
 
 zita.merge = function(dest){
