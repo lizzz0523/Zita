@@ -8,6 +8,18 @@ var zita = exports.zita = {
     version : '0.0.1'
 };
 
+var _slice = function(arr, start, end){
+        return Array.prototype.slice.call(arr, start, end);
+    },
+
+    _string = function(obj){
+        return Object.prototype.toString.call(obj);
+    },
+
+    _now = Date.now || function(){
+        return (new Date).getTime();
+    };
+
 
 // class
 
@@ -19,14 +31,6 @@ zita.extend = function(dest){
 
 
 // array or object
-
-var _slice = function(arr, start, end){
-    return Array.prototype.slice.call(arr, start, end);
-};
-
-var _string = function(obj){
-    return Object.prototype.toString.call(obj);
-};
 
 var IS_DONTENUM_BUG = (function(){
     for(var prop in {toString : 1}){
@@ -112,26 +116,6 @@ var _each = zita.each = function(obj, callback){
     return;
 };
 
-zita.range = function(start, stop, step){
-    var res = [],
-        i, len;
-
-    if(arguments.length <= 1){
-        stop = start;
-        start = 0;
-    }
-    step = step || 1;
-
-    i = start;
-    len = Math.max(Math.ceil((stop - start) / step, 0));
-    while(len--){
-        res.push(start);
-        start += step;
-    };
-
-    return res;
-};
-
 zita.merge = function(dest){
     var args = _slice(arguments, 1),
         obj, keys,
@@ -154,6 +138,26 @@ zita.merge = function(dest){
 
 zita.clone = function(orig){
     return zita.merge(orig.length ? [] : {}, orig);
+};
+
+zita.range = function(start, stop, step){
+    var res = [],
+        i, len;
+
+    if(arguments.length <= 1){
+        stop = start;
+        start = 0;
+    }
+    step = step || 1;
+
+    i = start;
+    len = Math.max(Math.ceil((stop - start) / step, 0));
+    while(len--){
+        res.push(start);
+        start += step;
+    };
+
+    return res;
 };
 
 zita.max = function(arr, iterator){
@@ -199,6 +203,7 @@ zita.isFinite = function(obj){
 };
 
 var _type = zita.type = (function(){
+
     var class2type = {};
 
     _each('Number Boolean String Array Object Function Date RegExp Error'.split(' '), function(type){
@@ -214,6 +219,7 @@ var _type = zita.type = (function(){
             ? class2type[_string(obj)] || "object"
             : typeof obj;
     }
+
 })();
 
 _each('Number Boolean String Date RegExp'.split(' '), function(type){
@@ -249,6 +255,7 @@ zita.isElement = function(obj){
 // function
 
 zita.bind = (function(){
+
     var proxy = function(){};
 
     return function(callback, context){
@@ -275,10 +282,6 @@ zita.bind = (function(){
     };
 
 })();
-
-var _now = Date.now || function(){
-    return (new Date).getTime();
-};
 
 zita.debounce = function(callback, delay){
     var timer = null;
@@ -367,7 +370,67 @@ zita.guid = function(){
 
 // tools
 
+zita.event = (function(){
+
+    var events = {};
+
+    return {
+        on : function(name, callback){
+            var event = events[name] || (events[name] = []);
+
+            if(callback.eventId) return;
+
+            callback.eventId = 'event-' + zita.guid();
+            event.push(callback);
+
+            return callback;
+        },
+
+        off : function(name, callback){
+            var event = events[name],
+                i = 0, len;
+
+            if(!event) return;
+            len = event.length;
+
+            if(!callback){
+                delete events[name];
+            }else{
+                if(!callback.eventId) return;
+
+                for(; i < len; i++){
+                    if(callback.eventId == event[i].eventId){
+                        callback = event[i];
+                        delete callback.tickId;
+
+                        event.splice(i, 1);
+                        
+                        break;
+                    }
+                }
+            }
+
+            return callback;
+        },
+
+        trigger : function(name){
+            var args = _slice(arguments, 1),
+                event = events[name],
+                i = 0, len;
+
+            if(!event) return;
+            len = event.length;
+
+            for(; i < len; i++){
+                event[i].apply(zita, args);
+            }
+        }
+    }
+
+})();
+
 zita.queue = (function(){
+
     var queues = {};
 
     return {
@@ -380,8 +443,9 @@ zita.queue = (function(){
                 queue.push(callback);
             }
 
-            return queue;
+            return callback;
         },
+
         next : function(name){
             var queue = queues[name],
                 callback;
@@ -397,6 +461,7 @@ zita.queue = (function(){
                 delete queues[name]
             }
         },
+
         clear : function(name){
             var queue = queues[name];
             queue && (delete queues[name]);
@@ -422,6 +487,7 @@ zita.ticker = (function(){
         };
     
     (function(){
+
         var vendors = ' ms moz webkit o'.split(' '),
             i = 0,
             len = vendors.length;
@@ -440,6 +506,7 @@ zita.ticker = (function(){
         cancelAnimFrame || (cancelAnimFrame = function(timerId){
             return win.clearTimeout(timerId);
         });
+
     })();
     
     function tick(){
@@ -478,6 +545,7 @@ zita.ticker = (function(){
 
             return callback;
         },
+
         remove : function(callback){
             var ticker,
                 i = 0,
@@ -491,10 +559,10 @@ zita.ticker = (function(){
                 for(; i < len; i++){
                     ticker = tickers[i];
                     if(callback.tickId == ticker.callback.tickId){
-                        tickers.splice(i, 1);
-                        
                         callback = ticker.callback;
                         delete callback.tickId;
+
+                        tickers.splice(i, 1);
                         
                         break;
                     }

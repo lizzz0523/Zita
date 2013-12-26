@@ -2,21 +2,22 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
-<title>Zita:queue</title>
+<title>Zita:event</title>
 </head>
 <body>
 <script type="text/javascript" src="../zita.js"></script>
 <script type="text/javascript">
 zita.each(zita.range(3), function(value){
-	zita.queue.add('yelp', function(){
-        alert(value);
-        setTimeout(function(){
-            zita.queue.next('yelp');
-        }, 1000);
+	zita.event.on('yelp', function(){
+        console.log(value);
     });
 });
 
-zita.queue.next('yelp');
+zita.event.trigger('yelp');
+
+zita.event.off('yelp');
+
+zita.event.trigger('yelp');
 </script>
 </body>
 </html>
