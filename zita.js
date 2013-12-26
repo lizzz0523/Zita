@@ -34,62 +34,16 @@ zita.extend = function(dest){
 
 var IS_DONTENUM_BUG = (function(){
     for(var prop in {toString : 1}){
-        if(prop == 'toString') return false;
+        if(prop === 'toString') return false;
     }
     return true;
 })();
-
-zita.keys = function(obj){
-    var res = [],
-        prop;
-    
-    for(prop in obj){
-        if(!obj.hasOwnProperty(prop)) continue;
-        res.push(prop);
-    }
-
-    // fix don't enum bug
-    if(IS_DONTENUM_BUG){
-        if(obj.toString !== Object.prototype.toString){
-            res.push('toString');
-        }
-
-        if(obj.valueOf !== Object.prototype.valueOf){
-            res.push('valueOf');
-        }
-    }
-
-    return res;
-};
-
-zita.values = function(obj){
-    var res = [];
-        prop;
-
-    for(prop in obj){
-        if(!obj.hasOwnProperty(prop)) continue;
-        res.push(obj[prop]);
-    }
-
-    // fix don't enum bug
-    if(IS_DONTENUM_BUG){
-        if(obj.toString !== Object.prototype.toString){
-            res.push(obj.toString);
-        }
-
-        if(obj.valueOf !== Object.prototype.valueOf){
-            res.push(obj.valueOf);
-        }
-    }
-
-    return res;
-};
 
 var _each = zita.each = function(obj, callback){
     var keys,
         i = 0;
 
-    if(obj == null) return;
+    if(obj === null) return;
 
     // use the native ecmascript 5 each;
     if(obj.forEach){
@@ -116,17 +70,37 @@ var _each = zita.each = function(obj, callback){
     return;
 };
 
+zita.reduce = function(obj, iterator, memo){
+    var res = memo;
+
+    // if(obj.reduce && obj.reduce === Array.prototype.reduce){
+    //     return res ? obj.reduce(iterator, res) : obj.reduce(iterator);
+    // }
+
+    _each(obj, function(){
+        if(res === undefined){
+            res = arguments[0];
+        }else{
+            res = iterator.apply(zita, zita.merge([res], _slice(arguments)));
+        }
+    });
+
+    return res;
+};
+
 zita.merge = function(dest){
     var args = _slice(arguments, 1),
-        obj, keys,
-        i, j;
+        src, keys,
+        i = 0,
+        j = 0;
 
-    if(dest.length){
-        dest = dest.concat(args);
-    }else{
-        for(; i < args.length; i++){
-            obj = args[i];
-            keys = zita.keys(obj);
+    for(; i < args.length; i++){
+        src = args[i];
+
+        if(dest.length){
+            dest = dest.concat(src);
+        }else{
+            keys = zita.keys(src);
             for(; j < keys.length; j++){
                 dest[keys[j]] = obj[keys[j]];
             }
@@ -192,14 +166,50 @@ zita.min = function(arr, iterator){
     return min.value;
 };
 
-zita.isNaN = Number.isNaN || function(obj){
-    return _type(obj) === 'number' && obj !== obj ;
+zita.keys = function(obj){
+    var res = [],
+        prop;
+    
+    for(prop in obj){
+        if(!obj.hasOwnProperty(prop)) continue;
+        res.push(prop);
+    }
+
+    // fix don't enum bug
+    if(IS_DONTENUM_BUG){
+        if(obj.toString !== Object.prototype.toString){
+            res.push('toString');
+        }
+
+        if(obj.valueOf !== Object.prototype.valueOf){
+            res.push('valueOf');
+        }
+    }
+
+    return res;
 };
 
-zita.isFinite = function(obj){
-    // !isNaN(parseFloat(obj)) for numeric check
-    // isFinite(obj) for finite check
-    return !isNaN(parseFloat(obj)) && isFinite(obj);
+zita.values = function(obj){
+    var res = [];
+        prop;
+
+    for(prop in obj){
+        if(!obj.hasOwnProperty(prop)) continue;
+        res.push(obj[prop]);
+    }
+
+    // fix don't enum bug
+    if(IS_DONTENUM_BUG){
+        if(obj.toString !== Object.prototype.toString){
+            res.push(obj.toString);
+        }
+
+        if(obj.valueOf !== Object.prototype.valueOf){
+            res.push(obj.valueOf);
+        }
+    }
+
+    return res;
 };
 
 var _type = zita.type = (function(){
@@ -227,7 +237,7 @@ _each('Number Boolean String Date RegExp'.split(' '), function(type){
 });
 
 zita.isUndefined = function(obj){
-    return obj === void 0;
+    return obj === undefined;
 };
 
 zita.isNull = function(obj){
@@ -235,7 +245,7 @@ zita.isNull = function(obj){
 };
 
 zita.isArray = Array.isArray || function(obj){
-    return _type(obj) == 'array';
+    return _type(obj) === 'array';
 };
 
 // fix chrome(1-12) bug and use a faster solution
@@ -248,7 +258,17 @@ zita.isFunction = typeof /./ !== 'function'
 };
 
 zita.isElement = function(obj){
-    return obj != null && obj.nodeType && obj.nodeType == 1;
+    return obj !== null && obj.nodeType && obj.nodeType === 1;
+};
+
+zita.isNaN = Number.isNaN || function(obj){
+    return _type(obj) === 'number' && obj !== obj ;
+};
+
+zita.isFinite = function(obj){
+    // !isNaN(parseFloat(obj)) for numeric check
+    // isFinite(obj) for finite check
+    return !isNaN(parseFloat(obj)) && isFinite(obj);
 };
 
 
@@ -263,7 +283,7 @@ zita.bind = (function(){
 
         // make sure browser support the functing binding
         // and not be overrided
-        if(callback.bind && callback.bind == Function.prototype.bind){
+        if(callback.bind && callback.bind === Function.prototype.bind){
             return Function.prototype.bind.apply(callback,  _slice(arguments, 1));
         }
 
@@ -356,6 +376,9 @@ zita.defer = function(callback){
     return zita.delay.apply(zita, args);
 };
 
+
+// tools
+
 zita.guid = function(){
     var d = new Date().getTime(), r;
 
@@ -363,12 +386,9 @@ zita.guid = function(){
         r = (d + Math.random() * 16) % 16 | 0;
         d = Math.floor(d / 16);
 
-        return (c == 'x' ? r : (r & 0x7 | 0x8)).toString(16);
+        return (c === 'x' ? r : (r & 0x7 | 0x8)).toString(16);
     });
 };
-
-
-// tools
 
 zita.event = (function(){
 
@@ -399,7 +419,7 @@ zita.event = (function(){
                 if(!callback.eventId) return;
 
                 for(; i < len; i++){
-                    if(callback.eventId == event[i].eventId){
+                    if(callback.eventId === event[i].eventId){
                         callback = event[i];
                         delete callback.tickId;
 
@@ -541,7 +561,7 @@ zita.ticker = (function(){
                 context : context || win
             });
 
-            if(tickers.length == 1) run();
+            if(tickers.length === 1) run();
 
             return callback;
         },
@@ -558,7 +578,7 @@ zita.ticker = (function(){
 
                 for(; i < len; i++){
                     ticker = tickers[i];
-                    if(callback.tickId == ticker.callback.tickId){
+                    if(callback.tickId === ticker.callback.tickId){
                         callback = ticker.callback;
                         delete callback.tickId;
 
