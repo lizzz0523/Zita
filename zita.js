@@ -34,51 +34,66 @@ zita.extend = function(dest){
 
 var IS_DONTENUM_BUG = (function(){
     for(var prop in {toString : 1}){
-        if(prop === 'toString') return false;
+        if(prop == 'toString') return false;
     }
     return true;
 })();
 
-var _each = zita.each = function(obj, callback){
+var _each = zita.each = function(list, iterator){
     var keys,
         i = 0;
 
-    if(obj === null) return;
+    if(list == null) return;
 
     // use the native ecmascript 5 each;
-    if(obj.forEach){
-        obj.forEach(function(){
-            return callback.apply(zita, arguments);
+    if(list.forEach){
+        list.forEach(function(){
+            return iterator.apply(zita, arguments);
         });
 
         return;
     }
 
-    if(obj.length){
-        // if obj is array
-        for(; i < obj.length; i++){
-            if(callback.call(zita, i, obj[i], obj) === false) break;
+    if(list.length){
+        // if list is array
+        for(; i < list.length; i++){
+            if(iterator.call(zita, list[i], i, list) === false) break;
         }
     }else{
-        // if obj is object
-        keys = zita.keys(obj);
+        // if list is object
+        keys = zita.keys(list);
         for(; i < keys.length; i++){
-            if(callback.call(zita, keys[i], obj[keys[i]], obj) === false) break;
+            if(iterator.call(zita, list[keys[i]], keys[i], list) === false) break;
         }
     }
 
     return;
 };
 
-zita.reduce = function(obj, iterator, memo){
+zita.map = function(list, iterator){
+    var res = list.length ? [] : {};
+
+    if(list.map && list.map === Array.prototype.map){
+        return list.map(iterator, zita);
+    }
+
+    _each(list, function(value, key){
+        res[key] = iterator.apply(zita, arguments);
+    });
+
+    return res;
+}
+
+zita.reduce = function(list, iterator, memo){
     var res = memo;
 
-    // if(obj.reduce && obj.reduce === Array.prototype.reduce){
-    //     return res ? obj.reduce(iterator, res) : obj.reduce(iterator);
-    // }
+    if(list.reduce && list.reduce === Array.prototype.reduce){
+        iterator = zita.bind(iterator, zita);
+        return res ? list.reduce(iterator, res) : list.reduce(iterator);
+    }
 
-    _each(obj, function(){
-        if(res === undefined){
+    _each(list, function(){
+        if(res == undefined){
             res = arguments[0];
         }else{
             res = iterator.apply(zita, zita.merge([res], _slice(arguments)));
@@ -86,6 +101,38 @@ zita.reduce = function(obj, iterator, memo){
     });
 
     return res;
+};
+
+zita.max = function(list, iterator){
+    var proxy, max,
+        i = 0;
+
+    max = {proxy : -Infinity, value : -Infinity};
+    _each(list, function(value){
+        proxy = iterator ? iterator.apply(zita, arguments) : value;
+        if(proxy > max.proxy){
+            max.proxy = proxy;
+            max.value = value;
+        }
+    });
+
+    return max.value;
+};
+
+zita.min = function(list, iterator){
+    var proxy, min,
+        i = 0;
+
+    min = {proxy : Infinity, value : Infinity};
+    _each(list, function(value){
+        proxy = iterator ? iterator.apply(zita, arguments) : value;
+        if(proxy < min.proxy){
+            min.proxy = proxy;
+            min.value = value;
+        }
+    });
+
+    return min.value;
 };
 
 zita.merge = function(dest){
@@ -132,38 +179,6 @@ zita.range = function(start, stop, step){
     };
 
     return res;
-};
-
-zita.max = function(arr, iterator){
-    var proxy, max,
-        i = 0;
-
-    max = {proxy : -Infinity, value : -Infinity};
-    for(; i < arr.length; i++){
-        proxy = iterator ? iterator.call(zita, arr[i], i) : arr[i];
-        if(proxy > max.proxy){
-            max.proxy = proxy;
-            max.value = arr[i];
-        }
-    }
-
-    return max.value;
-};
-
-zita.min = function(arr, iterator){
-    var proxy, min,
-        i = 0;
-
-    min = {proxy : Infinity, value : Infinity};
-    for(; i < arr.length; i++){
-        proxy = iterator ? iterator.call(zita, arr[i], i) : arr[i];
-        if(proxy < min.proxy){
-            min.proxy = proxy;
-            min.value = arr[i];
-        }
-    }
-
-    return min.value;
 };
 
 zita.keys = function(obj){
@@ -221,11 +236,11 @@ var _type = zita.type = (function(){
     });
 
     return function(obj){
-        if(obj === null){
+        if(obj == null){
             return String(obj);
         }
 
-        return typeof obj === 'object' || typeof obj === 'function'
+        return typeof obj == 'object' || typeof obj == 'function'
             ? class2type[_string(obj)] || "object"
             : typeof obj;
     }
@@ -233,36 +248,36 @@ var _type = zita.type = (function(){
 })();
 
 _each('Number Boolean String Date RegExp'.split(' '), function(type){
-    zita['is' + type] = function(obj){ return _type(obj) === type.toLowerCase(); };
+    zita['is' + type] = function(obj){ return _type(obj) == type.toLowerCase(); };
 });
 
 zita.isUndefined = function(obj){
-    return obj === undefined;
+    return obj == undefined;
 };
 
 zita.isNull = function(obj){
-    return obj === null;
+    return obj == null;
 };
 
 zita.isArray = Array.isArray || function(obj){
-    return _type(obj) === 'array';
+    return _type(obj) == 'array';
 };
 
 // fix chrome(1-12) bug and use a faster solution
-zita.isFunction = typeof /./ !== 'function'
+zita.isFunction = typeof /./ != 'function'
 ? function(obj){
-    return typeof obj === 'function';
+    return typeof obj == 'function';
 }
 : function(obj){
-    return _type(obj) === 'function';
+    return _type(obj) == 'function';
 };
 
 zita.isElement = function(obj){
-    return obj !== null && obj.nodeType && obj.nodeType === 1;
+    return obj != null && obj.nodeType && obj.nodeType == 1;
 };
 
 zita.isNaN = Number.isNaN || function(obj){
-    return _type(obj) === 'number' && obj !== obj ;
+    return _type(obj) == 'number' && obj !== obj ;
 };
 
 zita.isFinite = function(obj){
@@ -386,7 +401,7 @@ zita.guid = function(){
         r = (d + Math.random() * 16) % 16 | 0;
         d = Math.floor(d / 16);
 
-        return (c === 'x' ? r : (r & 0x7 | 0x8)).toString(16);
+        return (c == 'x' ? r : (r & 0x7 | 0x8)).toString(16);
     });
 };
 
@@ -561,7 +576,7 @@ zita.ticker = (function(){
                 context : context || win
             });
 
-            if(tickers.length === 1) run();
+            if(tickers.length == 1) run();
 
             return callback;
         },

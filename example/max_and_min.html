@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+<title>Zita:max_and_min</title>
+</head>
+<body>
+<script type="text/javascript" src="../zita.js"></script>
+<script type="text/javascript">
+var arr = [3, 8, 10, 50],
+    obj = {sec1:4, sec2:9, sec3:20},
+    mix1 = [
+        {name:'apple', age:3},
+        {name:'banana', age:20},
+        {name:'coconet', age:12},
+        {name:'dew', age:11}
+    ],
+    mix2 = {
+        sec1:zita.range(3),
+        sec2:zita.range(9),
+        sec3:zita.range(20),
+        sec4:zita.range(12)
+    },
+    max, min;
+
+max = zita.max(arr);
+min = zita.min(arr);
+
+console.log(max);
+console.log(min);
+
+max = zita.max(obj);
+min = zita.min(obj);
+
+console.log(max);
+console.log(min);
+
+max = zita.max(mix1, function(item){return item.age});
+min = zita.min(mix1, function(item){return item.age});
+
+console.log(max);
+console.log(min);
+
+max = zita.max(mix2, function(item){return item.length});
+min = zita.min(mix2, function(item){return item.length});
+
+console.log(max);
+console.log(min);
+
+</script>
+</body>
+</html>
