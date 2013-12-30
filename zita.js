@@ -21,120 +21,6 @@ var _slice = function(arr, start, end){
     };
 
 
-// class
-
-zita.extend = function(dest){
-    /*
-        todo: class extend
-    */
-};
-
-
-// function
-
-zita.bind = (function(){
-
-    var proxy = function(){};
-
-    return function(callback, context){
-        var args, bound, self;
-
-        // make sure browser support the functing binding
-        // and not be overrided
-        if(callback.bind && callback.bind === Function.prototype.bind){
-            return Function.prototype.bind.apply(callback,  _slice(arguments, 1));
-        }
-
-        args = _slice(arguments, 2);
-        return bound = function(){
-            if(!(this instanceof bound)) return callback.apply(context, zita.merge(args, _slice(arguments)));
-
-            proxy.prototype = callback.prototype;
-            self = new proxy();
-            proxy.prototype = null;
-
-            callback.apply(self, zita.merge(args, _slice(arguments)));
-            
-            return self;
-        };
-    };
-
-})();
-
-zita.debounce = function(callback, delay){
-    var timer = null;
-
-    function clear(){
-        clearTimeout(timer);
-        timer = null;
-    }
-
-    delay = delay || 200;
-
-    return function(){
-        var orig = callback,
-            context = this,
-            args = arguments;
-
-        callback = function(){
-            clear();
-            orig.apply(context, args);
-        }
-
-        timer && clear();
-        timer = setTimeout(callback, delay);
-    }
-};
-
-zita.pulse = function(callback, period, delay){
-    var timer = null,
-        endtime, active;
-
-    function clear(){
-        clearInterval(timer);
-        timer = null;
-        active = false;
-    }
-
-    delay = delay || 200;
-    period = period || 1000;
-
-    return function(){
-        var orig = callback,
-            context = this,
-            args = arguments;
-
-        callback = function(){
-            orig.apply(context, args);
-            if(_now() > endtime){
-                clear();
-            }
-        }
-
-        endtime = _now() + period;
-        if(!active){
-            active = true;
-            timer = setInterval(callback, delay);
-        }
-    }
-};
-
-zita.delay = function(callback, delay){
-    var args = _slice(arguments, 2);
-
-    delay = delay || 10;
-
-    return setTimeout(function(){
-        callback.apply(zita, args);
-    }, delay);
-};
-
-zita.defer = function(callback){
-    var args = zita.merge([callback, 0.01], _slice(arguments, 1));
-    return zita.delay.apply(zita, args);
-};
-
-
 // array or object
 
 var IS_DONTENUM_BUG = (function(){
@@ -518,6 +404,120 @@ zita.isFinite = function(obj){
     // !isNaN(parseFloat(obj)) for numeric check
     // isFinite(obj) for finite check
     return !isNaN(parseFloat(obj)) && isFinite(obj);
+};
+
+
+// class
+
+zita.extend = function(dest){
+    /*
+        todo: class extend
+    */
+};
+
+
+// function
+
+zita.bind = (function(){
+
+    var proxy = function(){};
+
+    return function(callback, context){
+        var args, bound, self;
+
+        // make sure browser support the functing binding
+        // and not be overrided
+        if(callback.bind && callback.bind === Function.prototype.bind){
+            return Function.prototype.bind.apply(callback,  _slice(arguments, 1));
+        }
+
+        args = _slice(arguments, 2);
+        return bound = function(){
+            if(!(this instanceof bound)) return callback.apply(context, zita.merge(args, _slice(arguments)));
+
+            proxy.prototype = callback.prototype;
+            self = new proxy();
+            proxy.prototype = null;
+
+            callback.apply(self, zita.merge(args, _slice(arguments)));
+            
+            return self;
+        };
+    };
+
+})();
+
+zita.debounce = function(callback, delay){
+    var timer = null;
+
+    function clear(){
+        clearTimeout(timer);
+        timer = null;
+    }
+
+    delay = delay || 200;
+
+    return function(){
+        var orig = callback,
+            context = this,
+            args = arguments;
+
+        callback = function(){
+            clear();
+            orig.apply(context, args);
+        }
+
+        timer && clear();
+        timer = setTimeout(callback, delay);
+    }
+};
+
+zita.pulse = function(callback, period, delay){
+    var timer = null,
+        endtime, active;
+
+    function clear(){
+        clearInterval(timer);
+        timer = null;
+        active = false;
+    }
+
+    delay = delay || 200;
+    period = period || 1000;
+
+    return function(){
+        var orig = callback,
+            context = this,
+            args = arguments;
+
+        callback = function(){
+            orig.apply(context, args);
+            if(_now() > endtime){
+                clear();
+            }
+        }
+
+        endtime = _now() + period;
+        if(!active){
+            active = true;
+            timer = setInterval(callback, delay);
+        }
+    }
+};
+
+zita.delay = function(callback, delay){
+    var args = _slice(arguments, 2);
+
+    delay = delay || 10;
+
+    return setTimeout(function(){
+        callback.apply(zita, args);
+    }, delay);
+};
+
+zita.defer = function(callback){
+    var args = zita.merge([callback, 0.01], _slice(arguments, 1));
+    return zita.delay.apply(zita, args);
 };
 
 

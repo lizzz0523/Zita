@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+<title>Zita:event</title>
+</head>
+<body>
+<script type="text/javascript" src="../zita.js"></script>
+<script type="text/javascript">
+zita.event.on('fx', function(){
+    console.log('fx1');
+    setTimeout(function(){
+        zita.event.trigger('fx1')
+    }, 1000);
+});
+
+zita.event.on('fx1', function(){
+    console.log('fx11');
+    setTimeout(function(){
+        zita.event.trigger('fx11');
+    }, 1000);
+});
+
+zita.event.on('fx1', function(){
+    console.log('fx12');
+    setTimeout(function(){
+        zita.event.trigger('fx12');
+    }, 2000);
+});
+
+zita.event.on('fx1', function(){
+    console.log('fx13');
+    setTimeout(function(){
+        zita.event.trigger('fx13');
+    }, 3000);
+});
+
+zita.event.on('fx11', function(){
+    console.log('fx111');
+    setTimeout(function(){
+        zita.event.trigger('fx111');
+    }, 1000);
+});
+
+zita.event.on('fx11', function(){
+    console.log('fx112');
+    setTimeout(function(){
+        zita.event.trigger('fx112');
+    }, 2000);
+});
+
+zita.event.on('fx12', function(){
+    console.log('fx121');
+    setTimeout(function(){
+        zita.event.trigger('fx121');
+    }, 1000);
+});
+
+zita.event.trigger('fx');
+</script>
+</body>
+</html>
