@@ -12,6 +12,18 @@ var _slice = function(arr, start, end){
         return Array.prototype.slice.call(arr, start, end);
     },
 
+    _push = function(obj, value, key){
+        if(obj.push && obj.push === Array.prototype.push){
+            obj.push(value);
+            key = obj.length - 1;
+        }else{
+            key = key || zita.guid();
+            obj[key] = value;
+        }
+
+        return key;
+    },
+
     _string = function(obj){
         return Object.prototype.toString.call(obj);
     },
@@ -69,9 +81,9 @@ zita.reduce = function(list, iterator, memo){
         return res == undefined ? list.reduce(iterator, res) : list.reduce(iterator);
     }
 
-    _each(list, function(){
+    _each(list, function(value){
         if(res == undefined){
-            res = arguments[0];
+            res = value;
         }else{
             res = iterator.apply(zita, zita.merge([res], _slice(arguments)));
         }
@@ -81,14 +93,14 @@ zita.reduce = function(list, iterator, memo){
 };
 
 zita.map = function(list, iterator){
-    var res = list.length ? [] : {};
+    var res = [];
 
     if(list.map && list.map === Array.prototype.map){
         return list.map(iterator, zita);
     }
 
-    _each(list, function(value, key){
-        res[key] = iterator.apply(zita, arguments);
+    _each(list, function(){
+        res.push(iterator.apply(zita, arguments));
     });
 
     return res;
@@ -112,7 +124,7 @@ zita.find = function(list, iterator){
 };
 
 zita.filter = function(list, iterator){
-    var res = list.length ? [] : {};
+    var res = [];
 
     if(list.filter && list.filter === Array.prototype.filter){
         return list.filter(iterator, zita);
@@ -120,7 +132,7 @@ zita.filter = function(list, iterator){
 
     _each(list, function(value, key){
         if(iterator.apply(zita, arguments)){
-            res[key] = value;
+            res.push(value);
         }
     });
 
@@ -211,6 +223,9 @@ zita.merge = function(dest){
         i = 0,
         j = 0;
 
+    /*
+        todo: when dest is a array, release it form for loop;
+    */
     for(; i < args.length; i++){
         src = args[i];
 
@@ -533,6 +548,25 @@ zita.guid = function(){
         return (c == 'x' ? r : (r & 0x7 | 0x8)).toString(16);
     });
 };
+
+zita.route = (function(){
+    
+    var states = {};
+
+    return {
+        add : function(name, callback){
+
+        },
+
+        goto : function(name){
+
+        },
+
+        back : function(){
+            
+        }
+    } 
+});
 
 zita.event = (function(){
 
