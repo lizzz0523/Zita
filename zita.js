@@ -776,42 +776,42 @@ zita.fsm = (function(){
     var machines = {};
 
     function Fsm(initial){
-        this.state = {length : 0};
+        this.cache = {length : 0};
         this.map = {};
 
         this.id = 'fsm-' + zita.guid();
         this.asyn = false;
 
-        this.index = this.pushState(initial || 'none');
+        this.index = this.cacheState(initial || 'none');
     }
 
     Fsm.prototype = {
         mapState : function(action, transit){
-            var prev = this.pushState(transit.from || 'none'),
-                next = this.pushState(transit.to);
+            var prev = this.cacheState(transit.from || 'none'),
+                next = this.cacheState(transit.to);
 
             action = this.map[action] || (this.map[action] = []);
             action[prev] = next;
         },
 
-        pushState : function(name){
+        cacheState : function(name){
             var index;
 
-            if(this.state[name] != undefined){
-                index = this.state[name];
+            if(this.cache[name] != undefined){
+                index = this.cache[name];
             }else{
-                index = this.state.length++;
+                index = this.cache.length++;
 
                 // bi-directional references
-                this.state[name] = index;
-                this.state[index] = name;
+                this.cache[name] = index;
+                this.cache[index] = name;
             }
 
             return index;
         },
 
         getState : function(index){
-            return this.state[index || this.index];
+            return this.cache[index || this.index];
         },
 
         bindEvent : function(name, callback){
@@ -847,9 +847,14 @@ zita.fsm = (function(){
                 this.asyn = false;
 
                 this.index = next.index;
-                zita.event.emit(this.id + '-:enter' + next.state, name);
+                zita.event.emit(this.id + '-enter:' + next.state, name);
             }, this);
 
+            zita.queue.next(this.id + '-asyn');
+        },
+
+        syncState : function(){
+            if(!this.asyn) return;
             zita.queue.next(this.id + '-asyn');
         }
     }
@@ -886,8 +891,8 @@ zita.fsm = (function(){
         next : function(name){
             var machine = machines[name];
 
-            if(!machine || !machine.asyn) return;
-            zita.queue.next(machine.id + '-asyn');
+            if(!machine) return;
+            machine.syncState();
         },
 
         on : function(name, event, callback){
