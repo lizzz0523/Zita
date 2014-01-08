@@ -738,9 +738,7 @@ zita.queue = (function(){
             var list = queues[name] || (queues[name] = []);
 
             if(zita.isArray(callback)){
-                _each(callback, function(fn){
-                    zita.queue.add(name, fn, context);
-                });
+                queues[name] = zita.clone(callback);
             }else{
                 list.push({
                     callback : callback,
@@ -770,6 +768,142 @@ zita.queue = (function(){
             list && (delete queues[name]);
         }
     };
+
+})();
+
+zita.fsm = (function(){
+
+    var machines = {};
+
+    function Fsm(initial){
+        this.state = {length : 0};
+        this.map = {};
+
+        this.id = 'fsm-' + zita.guid();
+        this.asyn = false;
+
+        this.index = this.pushState(initial || 'none');
+    }
+
+    Fsm.prototype = {
+        mapState : function(action, transit){
+            var prev = this.pushState(transit.from || 'none'),
+                next = this.pushState(transit.to);
+
+            action = this.map[action] || (this.map[action] = []);
+            action[prev] = next;
+        },
+
+        pushState : function(name){
+            var index;
+
+            if(this.state[name] != undefined){
+                index = this.state[name];
+            }else{
+                index = this.state.length++;
+
+                // bi-directional references
+                this.state[name] = index;
+                this.state[index] = name;
+            }
+
+            return index;
+        },
+
+        getState : function(index){
+            return this.state[index || this.index];
+        },
+
+        bindEvent : function(name, callback){
+            return zita.event.on(this.id + '-' + name, callback, this);
+        },
+
+        unbindEvent : function(name, callback){
+            return zita.event.off(this.id + '-' + name, callback);
+        },
+
+        doAction : function(name, asyn){
+            var action = this.map[name],
+                state, next = {};
+
+            if(this.asyn) return;
+
+            state = this.getState(this.index);
+
+            next.index = action[this.index];
+            next.state = this.getState(next.index);
+
+            zita.queue.add(this.id + '-asyn', function(){
+                this.asyn = true;
+
+                zita.event.emit(this.id + '-leave:' + state, name);
+
+                if(!asyn){
+                    zita.queue.next(this.id + '-asyn');
+                }
+            }, this);
+
+            zita.queue.add(this.id + '-asyn', function(){
+                this.asyn = false;
+
+                this.index = next.index;
+                zita.event.emit(this.id + '-:enter' + next.state, name);
+            }, this);
+
+            zita.queue.next(this.id + '-asyn');
+        }
+    }
+
+    return {
+        create : function(name, options){
+            var machine = machines[name] || (machines[name] = new Fsm(options.initial));
+
+            _each(options.transits, function(transit){
+                machine.mapState(transit.action, transit);
+            });
+
+            _each(options.events, function(event){
+                machine.bindEvent(event.name, event.callback);
+            });
+
+            return machine;
+        },
+
+        add : function(name, transit){
+            var machine = machines[name];
+
+            if(!machine) return;
+            machine.mapState(transit);
+        },
+
+        fire : function(name, action, asyn){
+            var machine = machines[name];
+
+            if(!machine) return;
+            machine.doAction(action, asyn);
+        },
+
+        next : function(name){
+            var machine = machines[name];
+
+            if(!machine || !machine.asyn) return;
+            zita.queue.next(machine.id + '-asyn');
+        },
+
+        on : function(name, event, callback){
+            var machine = machines[name];
+
+            if(!machine) return;
+            machine.bindEvent(event, callback);
+        },
+
+        off : function(name, event, callback){
+            var machine = machines[name];
+
+            if(!machine) return;
+            machines.unbindEvent(event, callback);
+        }
+    }
 
 })();
 
