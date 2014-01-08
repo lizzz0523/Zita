@@ -10,53 +10,53 @@
 zita.event.on('fx', function(){
     console.log('fx1');
     setTimeout(function(){
-        zita.event.trigger('fx1')
+        zita.event.emit('fx1')
     }, 1000);
 });
 
 zita.event.on('fx1', function(){
     console.log('fx11');
     setTimeout(function(){
-        zita.event.trigger('fx11');
+        zita.event.emit('fx11');
     }, 1000);
 });
 
 zita.event.on('fx1', function(){
     console.log('fx12');
     setTimeout(function(){
-        zita.event.trigger('fx12');
+        zita.event.emit('fx12');
     }, 2000);
 });
 
 zita.event.on('fx1', function(){
     console.log('fx13');
     setTimeout(function(){
-        zita.event.trigger('fx13');
+        zita.event.emit('fx13');
     }, 3000);
 });
 
 zita.event.on('fx11', function(){
     console.log('fx111');
     setTimeout(function(){
-        zita.event.trigger('fx111');
+        zita.event.emit('fx111');
     }, 1000);
 });
 
 zita.event.on('fx11', function(){
     console.log('fx112');
     setTimeout(function(){
-        zita.event.trigger('fx112');
+        zita.event.emit('fx112');
     }, 2000);
 });
 
 zita.event.on('fx12', function(){
     console.log('fx121');
     setTimeout(function(){
-        zita.event.trigger('fx121');
+        zita.event.emit('fx121');
     }, 1000);
 });
 
-zita.event.trigger('fx');
+zita.event.emit('fx');
 </script>
 </body>
 </html>

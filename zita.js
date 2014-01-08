@@ -78,7 +78,7 @@ zita.reduce = function(list, iterator, memo){
 
     if(list.reduce && list.reduce === Array.prototype.reduce){
         iterator = zita.bind(iterator, zita);
-        return res == undefined ? list.reduce(iterator, res) : list.reduce(iterator);
+        return res != undefined ? list.reduce(iterator, res) : list.reduce(iterator);
     }
 
     _each(list, function(value){
@@ -130,7 +130,7 @@ zita.filter = function(list, iterator){
         return list.filter(iterator, zita);
     }
 
-    _each(list, function(value, key){
+    _each(list, function(value){
         if(iterator.apply(zita, arguments)){
             res.push(value);
         }
@@ -360,6 +360,10 @@ zita.equal = function(a, b){
             && a.multiline == b.multiline
             && a.ignoreCase == b.ignoreCase;
     }
+
+    /*
+        todo: do a deep comparison of object
+    */
 };
 
 var _type = zita.type = (function(){
@@ -549,140 +553,16 @@ zita.guid = function(){
     });
 };
 
-zita.route = (function(){
-    
-    var states = {};
-
-    return {
-        add : function(name, callback){
-
-        },
-
-        goto : function(name){
-
-        },
-
-        back : function(){
-            
-        }
-    } 
-});
-
-zita.event = (function(){
-
-    var events = {};
-
-    return {
-        on : function(name, callback){
-            var event = events[name] || (events[name] = []);
-
-            if(callback.eventId) return;
-
-            callback.eventId = 'event-' + zita.guid();
-            event.push(callback);
-
-            return callback;
-        },
-
-        off : function(name, callback){
-            var event = events[name],
-                i = 0, len;
-
-            if(!event) return;
-            len = event.length;
-
-            if(!callback){
-                delete events[name];
-            }else{
-                if(!callback.eventId) return;
-
-                for(; i < len; i++){
-                    if(callback.eventId === event[i].eventId){
-                        callback = event[i];
-                        delete callback.tickId;
-
-                        event.splice(i, 1);
-                        
-                        break;
-                    }
-                }
-            }
-
-            return callback;
-        },
-
-        trigger : function(name){
-            var args = _slice(arguments, 1),
-                event = events[name],
-                i = 0, len;
-
-            if(!event) return;
-            len = event.length;
-
-            for(; i < len; i++){
-                event[i].apply(zita, args);
-            }
-        }
-    }
-
-})();
-
-zita.queue = (function(){
-
-    var queues = {};
-
-    return {
-        add : function(name, callback){
-            var queue = queues[name] || (queues[name] = []);
-
-            if(zita.isArray(callback)){
-                queues[name] = zita.clone(callback);
-            }else{
-                queue.push(callback);
-            }
-
-            return callback;
-        },
-
-        next : function(name){
-            var queue = queues[name],
-                callback;
-
-            if(!queue) return;
-            
-            callback = queue.shift();
-            if(callback){
-                callback.call(zita)
-            }
-
-            if(!queue.length){
-                delete queues[name]
-            }
-        },
-
-        clear : function(name){
-            var queue = queues[name];
-            queue && (delete queues[name]);
-        }
-    };
-
-})();
-
-zita.ticker = (function(){
+zita.ticker = (function(settings){
 
     var win = exports,
 
         tickers = [],
 
-        timerId = null,
-
         requestAnimFrame,
         cancelAnimFrame,
 
-        settings = {
-            useRAF : true,
-            interval : 1000 / 60
-        };
+        timerId;
     
     (function(){
 
@@ -725,7 +605,7 @@ zita.ticker = (function(){
     
     function stop(){
         cancelAnimFrame(timerId);
-        timerId = null;
+        timerId = undefined;
     }
 
     return {
@@ -736,10 +616,12 @@ zita.ticker = (function(){
             callback.tickId = 'tick-' + zita.guid();
             tickers.push({
                 callback : callback,
-                context : context || win
+                context : context || zita
             });
 
-            if(tickers.length == 1) run();
+            if(tickers.length == 1){
+                run();
+            }
 
             return callback;
         },
@@ -750,7 +632,7 @@ zita.ticker = (function(){
                 len = tickers.length;
 
             if(!callback){
-                tickers = [];
+                tickers.length = 0;
             }else{
                 if(!callback.tickId) return;
 
@@ -775,7 +657,120 @@ zita.ticker = (function(){
         }
     };
 
+})({
+    useRAF : true,
+    interval : 1000 / 60
+});
+
+zita.event = (function(){
+
+    var events = {};
+
+    return {
+        on : function(name, callback, context){
+            var list = events[name] || (events[name] = []);
+
+            if(callback.eventId) return;
+
+            callback.eventId = 'event-' + zita.guid();
+            list.push({
+                callback : callback,
+                context : context || zita
+            });
+
+            return callback;
+        },
+
+        off : function(name, callback){
+            var list = events[name],
+                event,
+                i = 0, len;
+
+            if(!list) return;
+            len = list.length;
+
+            if(!callback){
+                list.length = 0;
+                delete events[name];
+            }else{
+                if(!callback.eventId) return;
+
+                for(; i < len; i++){
+                    event = list[i];
+                    if(callback.eventId === event.callback.eventId){
+                        callback = event.callback;
+                        delete callback.tickId;
+
+                        list.splice(i, 1);
+                        
+                        break;
+                    }
+                }
+            }
+
+            return callback;
+        },
+
+        emit : function(name){
+            var args = _slice(arguments, 1),
+                list = events[name],
+                event,
+                i = 0, len;
+
+            if(!list) return;
+            len = list.length;
+
+            for(; i < len; i++){
+                event = list[i];
+                event.callback.apply(event.context, args);
+            }
+        }
+    }
+
 })();
 
+zita.queue = (function(){
+
+    var queues = {};
+
+    return {
+        add : function(name, callback, context){
+            var list = queues[name] || (queues[name] = []);
+
+            if(zita.isArray(callback)){
+                _each(callback, function(fn){
+                    zita.queue.add(name, fn, context);
+                });
+            }else{
+                list.push({
+                    callback : callback,
+                    context : context || zita
+                });
+            }
+        },
+
+        next : function(name){
+            var list = queues[name],
+                queue;
+
+            if(!list) return;
+            
+            queue = list.shift();
+            if(queue){
+                queue.callback.call(queue.context);
+            }
+
+            if(!list.length){
+                delete queues[name];
+            }
+        },
+
+        clear : function(name){
+            var list = queues[name];
+            list && (delete queues[name]);
+        }
+    };
+
+})();
 
 })(window);

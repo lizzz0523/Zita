@@ -13,11 +13,11 @@ zita.each(zita.range(3), function(value){
     });
 });
 
-zita.event.trigger('yelp');
+zita.event.emit('yelp');
 
 zita.event.off('yelp');
 
-zita.event.trigger('yelp');
+zita.event.emit('yelp');
 </script>
 </body>
 </html>
