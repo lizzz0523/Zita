@@ -8,7 +8,7 @@
 <script type="text/javascript" src="../zita.js"></script>
 <script type="text/javascript">
 zita.each(zita.range(3), function(value){
-	zita.queue.add('yelp', function(){
+	zita.queue.push('yelp', function(){
         alert(value);
         setTimeout(function(){
             zita.queue.next('yelp');

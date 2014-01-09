@@ -5,19 +5,36 @@
 ;(function(exports, undefined){
 
 var zita = exports.zita = {
-    version : '0.0.1'
+    version : '0.0.1',
+    arr : [],
+    obj : {},
+    noop : function(){}
 };
 
+var nativePush = zita.arr.push,
+    nativeSlice = zita.arr.slice,
+    nativeConcat = zita.arr.concat,
+    nativeForEach = zita.arr.forEach,
+    nativeSome = zita.arr.some,
+    nativeEvery = zita.arr.every,
+    nativeMap = zita.arr.map,
+    nativeReduce = zita.arr.reduce,
+    nativeFind = zita.arr.find,
+    nativeFilter = zita.arr.filter,
+    nativeKeys = zita.obj.keys,
+    nativeToString = zita.obj.toString,
+    nativeBind = zita.noop.bind;
+
 var _slice = function(arr, start, end){
-        return Array.prototype.slice.call(arr, start, end);
+        return nativeSlice.call(arr, start, end);
     },
 
-    _concat = function(first, second){
-        return Array.prototype.concat.call(first, second);
+    _concat = function(arr, src){
+        return nativeConcat.call(arr, src);
     },
 
     _string = function(obj){
-        return Object.prototype.toString.call(obj);
+        return nativeToString.call(obj);
     },
 
     _now = Date.now || function(){
@@ -41,10 +58,8 @@ var _each = zita.each = function(list, iterator){
     if(list == null) return;
 
     // use the native ecmascript 5 each;
-    if(list.forEach){
-        return list.forEach(function(){
-            return iterator.apply(zita, arguments);
-        });
+    if(list.forEach && list.forEach === nativeForEach){
+        return list.forEach(iterator, zita);
     }
 
     if(zita.isArray(list)){
@@ -63,19 +78,51 @@ var _each = zita.each = function(list, iterator){
     return;
 };
 
+var _some = zita.some = function(list, iterator){
+    var res = false;
+
+    if(list.some && list.som === nativeSome){
+        return list.some(iterator, zita);
+    }
+
+    _each(list, function(){
+        // because the nativeForEach function couldn't stop by return false
+        // and I use this || condition to make it stop
+        if(res || (res = !!iterator.apply(zita, arguments))) return false;
+    });
+
+    return res;
+};
+
+zita.every = function(list, iterator){
+    var res = true;
+
+    if(list.every && list.every === nativeEvery){
+        return list.every(iterator, zita);
+    }
+
+    _each(list, function(){
+        // because the nativeForEach function couldn't stop by return false
+        // and I use this && condition to make it stop
+        if(res && !(res = !!iterator.apply(zita, arguments))) return false;
+    });
+
+    return res;
+};
+
 zita.reduce = function(list, iterator, memo){
     var res = memo;
 
-    if(list.reduce && list.reduce === Array.prototype.reduce){
+    if(list.reduce && list.reduce === nativeReduce){
         iterator = zita.bind(iterator, zita);
-        return res != undefined ? list.reduce(iterator, res) : list.reduce(iterator);
+        return res != undefined ? list.reduce(iterator, memo) : list.reduce(iterator);
     }
 
     _each(list, function(value){
         if(res == undefined){
             res = value;
         }else{
-            res = iterator.apply(zita, zita.merge([res], _slice(arguments)));
+            res = iterator.apply(zita, _concat([res], _slice(arguments)));
         }
     });
 
@@ -85,7 +132,7 @@ zita.reduce = function(list, iterator, memo){
 zita.map = function(list, iterator){
     var res = [];
 
-    if(list.map && list.map === Array.prototype.map){
+    if(list.map && list.map === nativeMap){
         return list.map(iterator, zita);
     }
 
@@ -99,14 +146,16 @@ zita.map = function(list, iterator){
 zita.find = function(list, iterator){
     var res;
 
-    if(list,find && list.find == Array.prototype.find){
+    if(list,find && list.find == nativeFind){
         return list.find(iterator, zita);
     }
 
-    _each(list, function(value){
+    // instead of using function _each
+    // here I use function _some to break the loop when we find the target
+    _some(list, function(value){
         if(iterator.apply(zita, arguments)){
             res = value;
-            return false;
+            return true;
         }
     });
 
@@ -116,7 +165,7 @@ zita.find = function(list, iterator){
 zita.filter = function(list, iterator){
     var res = [];
 
-    if(list.filter && list.filter === Array.prototype.filter){
+    if(list.filter && list.filter === nativeFilter){
         return list.filter(iterator, zita);
     }
 
@@ -129,42 +178,8 @@ zita.filter = function(list, iterator){
     return res;
 };
 
-zita.every = function(list, iterator){
-    var res = true;
-
-    if(list.every && list.every === Array.prototype.every){
-        return list.every(iterator, zita);
-    }
-
-    _each(list, function(){
-        if(!iterator.apply(zita, arguments)){
-            res = false;
-            return false;
-        }
-    });
-
-    return res;
-};
-
-zita.some = function(list, iterator){
-    var res = false;
-
-    if(list.some && list.som === Array.prototype.some){
-        return list.some(iterator, zita);
-    }
-
-    _each(list, function(){
-        if(iterator.apply(zita, arguments)){
-            res = true;
-            return false;
-        }
-    });
-
-    return res;
-};
-
 zita.contains = function(list, target){
-    return zita.some(list, function(value){
+    return _some(list, function(value){
         return value === target;
     });
 };
@@ -213,15 +228,11 @@ zita.merge = function(dest){
         i = 0,
         j = 0;
 
-    /*
-        todo: when dest is a array, release it form for loop;
-    */
-    for(; i < args.length; i++){
-        src = args[i];
-
-        if(zita.isArray(dest)){
-            dest = dest.concat(src);
-        }else{
+    if(zita.isArray(dest)){
+        nativePush.apply(dest, args);
+    }else{
+        for(; i < args.length; i++){
+            src = args[i];
             keys = zita.keys(src);
             for(; j < keys.length; j++){
                 dest[keys[j]] = src[keys[j]];
@@ -370,7 +381,7 @@ var _type = zita.type = (function(){
         }
 
         return typeof obj == 'object' || typeof obj == 'function'
-            ? class2type[_string(obj)] || "object"
+            ? class2type[_string(obj)] || 'object'
             : typeof obj;
     }
 
@@ -436,19 +447,19 @@ zita.bind = (function(){
 
         // make sure browser support the functing binding
         // and not be overrided
-        if(callback.bind && callback.bind === Function.prototype.bind){
-            return Function.prototype.bind.apply(callback,  _slice(arguments, 1));
+        if(callback.bind && callback.bind === nativeBind){
+            return nativeBind.apply(callback,  _slice(arguments, 1));
         }
 
         args = _slice(arguments, 2);
         return bound = function(){
-            if(!(this instanceof bound)) return callback.apply(context, zita.merge(args, _slice(arguments)));
+            if(!(this instanceof bound)) return callback.apply(context, _concat(args, _slice(arguments)));
 
             proxy.prototype = callback.prototype;
             self = new proxy();
             proxy.prototype = null;
 
-            callback.apply(self, zita.merge(args, _slice(arguments)));
+            callback.apply(self, _concat(args, _slice(arguments)));
             
             return self;
         };
@@ -457,11 +468,11 @@ zita.bind = (function(){
 })();
 
 zita.debounce = function(callback, delay){
-    var timer = null;
+    var timerId = null;
 
     function clear(){
-        clearTimeout(timer);
-        timer = null;
+        clearTimeout(timerId);
+        timerId = null;
     }
 
     delay = delay || 200;
@@ -476,18 +487,18 @@ zita.debounce = function(callback, delay){
             orig.apply(context, args);
         }
 
-        timer && clear();
-        timer = setTimeout(callback, delay);
+        timerId && clear();
+        timerId = setTimeout(callback, delay);
     }
 };
 
 zita.pulse = function(callback, period, delay){
-    var timer = null,
+    var timerId = null,
         endtime, active;
 
     function clear(){
-        clearInterval(timer);
-        timer = null;
+        clearInterval(timerId);
+        timerId = null;
         active = false;
     }
 
@@ -509,7 +520,7 @@ zita.pulse = function(callback, period, delay){
         endtime = _now() + period;
         if(!active){
             active = true;
-            timer = setInterval(callback, delay);
+            timerId = setInterval(callback, delay);
         }
     }
 };
@@ -524,8 +535,10 @@ zita.delay = function(callback, delay){
     }, delay);
 };
 
+// delay 0.01ms
+// to force the callback function push into of event loop
 zita.defer = function(callback){
-    var args = zita.merge([callback, 0.01], _slice(arguments, 1));
+    var args = _concat([callback, 0.01], _slice(arguments, 1));
     return zita.delay.apply(zita, args);
 };
 
@@ -681,7 +694,7 @@ zita.ticker = (function(settings){
     }
 
     return {
-        add : function(callback, context){
+        enter : function(callback, context){
             // if the callback function has registered, skip it
             if(callback.tickId) return;
 
@@ -698,7 +711,7 @@ zita.ticker = (function(settings){
             return callback;
         },
 
-        remove : function(callback){
+        leave : function(callback){
             var ticker,
                 i = 0,
                 len = tickers.length;
@@ -742,15 +755,15 @@ zita.event = (function(){
     }
 
     Event.prototype = {
-        on : function(name, callback, context){
+        on : function(name, callback){
             var events = zita.data(this, 'events'),
-                list = events[name] || (events[name] = []);
+                handlers = events[name] || (events[name] = []);
 
             if(callback.eventId) return;
 
             callback.eventId = 'event-' + zita.guid();
-            list.push({
-                context : context || this.context || this,
+            handlers.push({
+                context : this.context || this,
                 callback : callback
             });
 
@@ -759,26 +772,26 @@ zita.event = (function(){
 
         off : function(name, callback){
             var events = zita.data(this, 'events'),
-                list = events[name],
-                event, 
+                handlers = events[name],
+                handler, 
                 i = 0, len;
 
-            if(!list) return;
-            len = list.length;
+            if(!handlers) return;
+            len = handlers.length;
 
             if(!callback){
-                list.length = 0;
+                handlers.length = 0;
                 delete events[name];
             }else{
                 if(!callback.eventId) return;
 
                 for(; i < len; i++){
-                    event = list[i];
-                    if(callback.eventId === event.callback.eventId){
-                        callback = event.callback;
+                    handler = handlers[i];
+                    if(callback.eventId === handler.callback.eventId){
+                        callback = handler.callback;
                         delete callback.tickId;
 
-                        list.splice(i, 1);
+                        handlers.splice(i, 1);
                         
                         break;
                     }
@@ -790,80 +803,97 @@ zita.event = (function(){
 
         emit : function(name){
             var events = zita.data(this, 'events'),
-                list = events[name],
-                event,
+                handlers = events[name],
+                handler,
                 i = 0, len,
                 args = _slice(arguments, 1);
 
-            if(!list) return;
-            len = list.length;
+            if(!handlers) return;
+            len = handlers.length;
 
             for(; i < len; i++){
-                event = list[i];
-                event.callback.apply(event.context, args);
+                handler = handlers[i];
+                handler.callback.apply(handler.context, args);
             }
         }
-    }
+    };
 
-    var globalEvent = new Event();
+    Event.global = new Event(zita);
 
-    return zita.merge(function(context){
+    Event.create = function(context){
         return new Event(context);
-    }, {
-        on : function(name, callback, context){
-            return globalEvent.on(name, callback, context);
-        },
+    };
 
-        off : function(name, callback){
-            return globalEvent.off(name, callback);
-        },
-
-        emit : function(name){
-            return globalEvent.emit(name);
-        }
+    _each('on off emit'.split(' '), function(value){
+        Event.create[value] = function(){
+            Event.global[value].apply(Event.global, arguments);
+        };
     });
+
+    return Event.create;
 
 })();
 
 zita.queue = (function(){
 
-    var queues = {};
+    function Queue(context){
+        zita.data(this, 'queues', {});
+        this.context = context;
+    }
 
-    return {
-        add : function(name, callback, context){
-            var list = queues[name] || (queues[name] = []);
+    Queue.prototype = {
+        push : function(name, callback){
+            var queues = zita.data(this, 'queues'),
+                players = queues[name] || (queues[name] = []);
 
             if(zita.isArray(callback)){
                 queues[name] = zita.clone(callback);
             }else{
-                list.push({
-                    callback : callback,
-                    context : context || zita
+                players.push({
+                    context : this.context || this,
+                    callback : callback
                 });
             }
         },
 
         next : function(name){
-            var list = queues[name],
-                queue;
+            var queues = zita.data(this, 'queues'),
+                players = queues[name],
+                player;
 
-            if(!list) return;
+            if(!players) return;
             
-            queue = list.shift();
-            if(queue){
-                queue.callback.call(queue.context);
+            player = players.shift();
+            if(player){
+                player.callback.call(player.context);
             }
 
-            if(!list.length){
+            if(!players.length){
                 delete queues[name];
             }
         },
 
         clear : function(name){
-            var list = queues[name];
-            list && (delete queues[name]);
+            var queues = zita.data(this, 'queues'),
+                players = queues[name];
+
+            players && (delete queues[name]);
         }
     };
+
+    Queue.global = new Queue(zita);
+
+    Queue.create = function(context){
+        return new Queue(context);
+    };
+
+    _each('push next clear'.split(' '), function(value){
+        Queue.create[value] = function(){
+            Queue.global[value].apply(Queue.global, arguments);
+        };
+    });
+
+    return Queue.create;
 
 })();
 
@@ -974,7 +1004,7 @@ zita.fsm = (function(){
             var machine = machines[name];
 
             if(!machine) return;
-            machine.mapState(transit);
+            machine.mapState(transit.action, transit);
         },
 
         fire : function(name, action, asyn){
@@ -984,7 +1014,8 @@ zita.fsm = (function(){
             machine.doAction(action, asyn);
         },
 
-        next : function(name){
+        sync
+         : function(name){
             var machine = machines[name];
 
             if(!machine) return;
