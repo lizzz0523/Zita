@@ -1,0 +1,50 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+<title>Zita:fsm</title>
+<style>
+    #hotarea {
+        width: 100px;
+        height: 100px;
+        background: red;
+    }
+</style>
+</head>
+<body>
+<div id="hotarea"></div>
+<script type="text/javascript" src="../zita.js"></script>
+<script type="text/javascript">
+var hotarea = document.getElementById('hotarea');
+
+var fsm = zita.fsm({
+    initial : 'fold',
+    transits : [
+        {action : 'expand', from : 'fold', to : 'unfold'},
+        {action : 'expand', from : 'unfold', to : 'unfold'},
+        {action : 'collapse', from : 'unfold', to : 'fold'},
+        {action : 'collapse', from : 'fold', to : 'fold'}
+    ],
+    events : [
+        {name : 'leave:fold', callback : function(action){hotarea.style.backgroundColor = 'grey'}},
+
+        {name : 'enter:unfold', callback : function(action){hotarea.style.backgroundColor = 'blue'}},
+
+        {name : 'leave:unfold', callback : function(action){hotarea.style.backgroundColor = 'grey'}},
+
+        {name : 'enter:fold', callback : function(action){hotarea.style.backgroundColor = 'red'}}
+    ]
+});
+
+var expand = true;
+
+hotarea.onmouseover = function(){
+    fsm.fire(expand ? 'expand' : 'collapse', true);
+    setTimeout(function(){
+        fsm.sync();
+        expand = !expand;
+    }, 1000);
+};
+</script>
+</body>
+</html>

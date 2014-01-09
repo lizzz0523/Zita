@@ -899,14 +899,13 @@ zita.queue = (function(){
 
 zita.fsm = (function(){
 
-    var machines = {};
-
-    function Fsm(initial){
+    function Fsm(initial, context){
         this.cache = {length : 0};
         this.map = {};
 
-        this.id = 'fsm-' + zita.guid();
-        this.asyn = false;
+        this.event = zita.event(context);
+        this.queue = zita.queue(this);
+        this.sync = true;
 
         this.index = this.cacheState(initial || 'none');
     }
@@ -921,121 +920,111 @@ zita.fsm = (function(){
         },
 
         cacheState : function(name){
-            var index;
+            var cache = this.cache,
+                index;
 
-            if(this.cache[name] != undefined){
-                index = this.cache[name];
+            if(cache[name] != undefined){
+                index = cache[name];
             }else{
-                index = this.cache.length++;
+                index = cache.length++;
 
                 // bi-directional references
-                this.cache[name] = index;
-                this.cache[index] = name;
+                cache[name] = index;
+                cache[index] = name;
             }
 
-            return index;
+            return cache[name];
         },
 
         getState : function(index){
-            return this.cache[index || this.index];
+            return this.cache[index != undefined ? index : this.index];
         },
 
         bindEvent : function(name, callback){
-            return zita.event.on(this.id + '-' + name, callback, this);
+            return this.event.on(name, callback);
         },
 
         unbindEvent : function(name, callback){
-            return zita.event.off(this.id + '-' + name, callback);
+            return this.event.off(name, callback);
         },
 
         doAction : function(name, asyn){
             var action = this.map[name],
                 state, next = {};
 
-            if(this.asyn) return;
+            if(!this.sync) return;
 
             state = this.getState(this.index);
 
             next.index = action[this.index];
             next.state = this.getState(next.index);
 
-            zita.queue.add(this.id + '-asyn', function(){
-                this.asyn = true;
+            if(next.index == undefined){
+                this.event.emit('error', 'State Transition Error!');
+                return;
+            }
 
-                zita.event.emit(this.id + '-leave:' + state, name);
+            this.queue.push('transit', function(){
+                this.sync = false;
+
+                this.event.emit('leave:' + state, name);
 
                 if(!asyn){
-                    zita.queue.next(this.id + '-asyn');
+                    this.queue.next('transit');
                 }
-            }, this);
+            });
 
-            zita.queue.add(this.id + '-asyn', function(){
-                this.asyn = false;
+            this.queue.push('transit', function(){
+                this.sync = true;
 
+                this.event.emit('enter:' + next.state, name);
                 this.index = next.index;
-                zita.event.emit(this.id + '-enter:' + next.state, name);
-            }, this);
+            });
 
-            zita.queue.next(this.id + '-asyn');
+            this.queue.next('transit');
         },
 
         syncState : function(){
-            if(!this.asyn) return;
-            zita.queue.next(this.id + '-asyn');
+            if(this.sync) return;
+            this.queue.next('transit');
         }
     }
 
-    return {
-        create : function(name, options){
-            var machine = machines[name] || (machines[name] = new Fsm(options.initial));
+    Fsm.create = function(options, context){
+        var machine = new Fsm(options.initial, context);
 
-            _each(options.transits, function(transit){
-                machine.mapState(transit.action, transit);
-            });
-
-            _each(options.events, function(event){
-                machine.bindEvent(event.name, event.callback);
-            });
-
-            return machine;
-        },
-
-        add : function(name, transit){
-            var machine = machines[name];
-
-            if(!machine) return;
+        _each(options.transits, function(transit){
             machine.mapState(transit.action, transit);
-        },
+        });
 
-        fire : function(name, action, asyn){
-            var machine = machines[name];
+        _each(options.events, function(event){
+            machine.bindEvent(event.name, event.callback);
+        });
 
-            if(!machine) return;
-            machine.doAction(action, asyn);
-        },
+        return {
+            add : function(action, transit){
+                machine.mapState(action, transit);
+            },
 
-        sync
-         : function(name){
-            var machine = machines[name];
+            fire : function(action, asyn){
+                machine.doAction(action, asyn);
+            },
 
-            if(!machine) return;
-            machine.syncState();
-        },
+            sync : function(){
+                machine.syncState();
+            },
 
-        on : function(name, event, callback){
-            var machine = machines[name];
+            on : function(event, callback){
+                machine.bindEvent(event, callback);
+            },
 
-            if(!machine) return;
-            machine.bindEvent(event, callback);
-        },
+            off : function(event, callback){
+                machines.unbindEvent(event, callback);
+            }
+        };
+    };
 
-        off : function(name, event, callback){
-            var machine = machines[name];
-
-            if(!machine) return;
-            machines.unbindEvent(event, callback);
-        }
-    }
+    return Fsm.create;
 
 })();
 
