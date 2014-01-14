@@ -8,7 +8,7 @@ var zita = exports.zita = {
     version : '0.0.1',
     arr : [],
     obj : {},
-    noop : function(){}
+    noop : function(x){ return x }
 };
 
 var nativePush = zita.arr.push,
@@ -146,7 +146,7 @@ zita.map = function(list, iterator){
 zita.find = function(list, iterator){
     var res;
 
-    if(list,find && list.find == nativeFind){
+    if(list.find && list.find == nativeFind){
         return list.find(iterator, zita);
     }
 
@@ -178,6 +178,14 @@ zita.filter = function(list, iterator){
     return res;
 };
 
+zita.where = function(list, props, first){
+    return zita[first ? 'find' : 'filter'](list, function(value){
+        for(var key in props){
+            if(value[key] == props[key]) return true;
+        }
+    });
+};
+
 zita.contains = function(list, target){
     return _some(list, function(value){
         return value === target;
@@ -189,6 +197,15 @@ zita.without = function(list){
 
     return zita.filter(list, function(value){
         return !zita.contains(args, value);
+    });
+};
+
+zita.invoke = function(list, method){
+    var args = _slice(arguments, 2),
+        isFunc = zita.isFunction(method);
+
+    return zita.map(list, function(value){
+        return (isFunc ? method : value[method]).apply(value, args);
     });
 };
 
@@ -220,6 +237,20 @@ zita.min = function(list, iterator){
     });
 
     return min.value;
+};
+
+zita.shuffle = function(list){
+    var shuffle = zita.toArray(list),
+        size = shuffle.length;
+
+    _each(shuffle, function(value, index){
+        var rand = zita.random(index, size);
+
+        shuffle[index] = shuffle[rand];
+        shuffle[rand] = value;
+    });
+
+    return shuffle;
 };
 
 zita.merge = function(dest){
@@ -259,6 +290,18 @@ zita.size = function(list){
         return keys.length;
     }
 };
+
+zita.toArray = function(list){
+    if(zita.isArray(list)){
+        return _slice(list);
+    }else{
+        return zita.values(list);
+    }
+};
+
+zita.toJSON = function(list){
+
+}
 
 zita.range = function(start, stop, step){
     var res = [],
@@ -333,6 +376,19 @@ zita.values = function(obj){
         if(obj.valueOf !== Object.prototype.valueOf){
             res.push(obj.valueOf);
         }
+    }
+
+    return res;
+};
+
+zita.invert = function(obj){
+    var keys = zita.keys(obj),
+        res = {},
+        i = 0,
+        len = keys.length;
+
+    for(; i < len; i++){
+        res[obj[keys[i]]] = keys[i];
     }
 
     return res;
@@ -543,6 +599,39 @@ zita.defer = function(callback){
 };
 
 
+// string
+
+(function(){
+
+    var map = {
+            escape : {
+                '<'  : '&lt;',
+                '>'  : '&gt;',
+                '&'  : '&amp;',
+                '"'  : '&quot;',
+                '\'' : '&#x27;'
+            }
+        },
+        pattern = {};
+
+    map.unescape = zita.invert(map.escape);
+    pattern = {
+        escape : new RegExp('[' + zita.keys(map.escape).join('') + ']', 'g'),
+        unescape : new RegExp('(' + zita.keys(map.unescape).join('|') + ')', 'g')
+    };
+
+    _each('escape unescape'.split(' '), function(method){
+        zita[method] = function(str){
+            if(str == null) return '';
+            return (str + '').replace(pattern[method], function(match){
+                return map[method][match];
+            });
+        };
+    });
+
+})();
+
+
 // tools
 
 zita.guid = function(){
@@ -554,6 +643,15 @@ zita.guid = function(){
 
         return (c == 'x' ? r : (r & 0x7 | 0x8)).toString(16);
     });
+};
+
+zita.random = function(min, max){
+    if(arguments.length == 1){
+        max = min;
+        min = 0;
+    }
+
+    return min + Math.floor(Math.random() * (max - min));
 };
 
 // global cache data system
