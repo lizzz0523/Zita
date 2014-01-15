@@ -5,11 +5,11 @@
 ;(function(exports, undefined){
 
 var zita = exports.zita = {
-    version : '0.0.1',
-    arr : [],
-    obj : {},
-    noop : function(x){ return x }
-};
+        version : '0.0.1',
+        arr : [],
+        obj : {},
+        noop : function(){}
+    };
 
 var nativePush = zita.arr.push,
     nativeSlice = zita.arr.slice,
@@ -45,11 +45,13 @@ var _slice = function(arr, start, end){
 // array or object
 
 var IS_DONTENUM_BUG = (function(){
-    for(var prop in {toString : 1}){
-        if(prop == 'toString') return false;
-    }
-    return true;
-})();
+
+        for(var prop in {toString : 1}){
+            if(prop == 'toString') return false;
+        }
+        return true;
+
+    })();
 
 var _each = zita.each = function(list, iterator){
     var keys,
@@ -180,9 +182,9 @@ zita.filter = function(list, iterator){
 
 zita.where = function(list, props, first){
     return zita[first ? 'find' : 'filter'](list, function(value){
-        for(var key in props){
-            if(value[key] == props[key]) return true;
-        }
+        return _some(props, function(prop, key){
+            return key in value && value[key] === prop;
+        });
     });
 };
 
@@ -206,6 +208,12 @@ zita.invoke = function(list, method){
 
     return zita.map(list, function(value){
         return (isFunc ? method : value[method]).apply(value, args);
+    });
+};
+
+zita.pluck = function(list, key){
+    return zita.map(list, function(value){
+        return value[key];
     });
 };
 
@@ -240,17 +248,17 @@ zita.min = function(list, iterator){
 };
 
 zita.shuffle = function(list){
-    var shuffle = zita.toArray(list),
-        size = shuffle.length;
+    var res = zita.toArray(list),
+        len = res.length;
 
-    _each(shuffle, function(value, index){
-        var rand = zita.random(index, size);
+    _each(res, function(value, index){
+        var rand = zita.random(index, len);
 
-        shuffle[index] = shuffle[rand];
-        shuffle[rand] = value;
+        res[index] = res[rand];
+        res[rand] = value;
     });
 
-    return shuffle;
+    return res;
 };
 
 zita.merge = function(dest){
@@ -299,9 +307,88 @@ zita.toArray = function(list){
     }
 };
 
-zita.toJSON = function(list){
+zita.toJSON = (function(){
 
-}
+    function quote(str) {
+        return  '"' + zita.escape(str) + '"';
+    }
+
+    function fill(num){
+        return (num < 10 ? '0' : '') + num;
+    }
+
+    function toJSON(value){
+        switch(_type(value)){
+            case 'date' :
+                return isFinite(value.valueOf())
+                ? value.getUTCFullYear()      + '-' +
+                fill(value.getUTCMonth() + 1) + '-' +
+                fill(value.getUTCDate())      + 'T' +
+                fill(value.getUTCHours())     + ':' +
+                fill(value.getUTCMinutes())   + ':' +
+                fill(value.getUTCSeconds())   + 'Z'
+                : null;
+
+            case 'boolean' :
+            case 'number' :
+            case 'string' :
+                return value.valueOf();
+        }
+
+        return value;
+    }
+
+    function walk(key, list){
+        var value = list[key],
+            partial = [],
+            k, v,
+            len;
+
+        // if the value has function toJSON,
+        // invoke it
+        if (value && _type(value.toJSON) == 'function'){
+            value = value.toJSON(key);
+        }else{
+            value = toJSON(value);
+        }
+
+        switch (_type(value)){
+            case 'array' :
+                if(!value) return 'null';
+                
+                partial = zita.map(value, function(v, k, value){
+                    return walk(k, value) || 'null';
+                });
+
+                return partial.length === 0
+                ? '[]'
+                : '[' + partial.join(',') + ']';
+
+            case 'object' :
+                partial = zita.map(value, function(v, k, value){
+                    return quote(k) + ':' + walk(k, value);
+                });
+
+                return partial.length === 0
+                ? '{}'
+                : '{' + partial.join(',') + '}';
+
+            case 'string' :
+                return quote(value);
+
+            case 'number' :
+                return (isFinite(value) ? value : null) + '';
+
+            default :
+                return value + '';
+        }
+    }
+    
+    return function(list){
+        return walk('', {'': list});
+    };
+
+})();
 
 zita.range = function(start, stop, step){
     var res = [],
@@ -323,16 +410,22 @@ zita.range = function(start, stop, step){
     return res;
 };
 
-zita.first = function(arr, index){
-    var len = Math.min(index || 1, arr.length);
+zita.first = function(arr, length){
+    var len = Math.min(length || 1, arr.length);
+
     if(len < 0) return [];
     return _slice(arr, 0, len);
 };
 
-zita.last = function(arr, index){
-    var len = Math.min(index || 1, arr.length);
+zita.last = function(arr, length){
+    var len = Math.min(length || 1, arr.length);
+
     if(len < 0) return _slice(arr);
     return _slice(arr, arr.length - len);
+};
+
+zita.rest = function(arr, index){
+    return _slice(arr, Math.max(index || 1, 0));
 };
 
 zita.keys = function(obj){
@@ -359,7 +452,7 @@ zita.keys = function(obj){
 };
 
 zita.values = function(obj){
-    var res = [];
+    var res = [],
         prop;
 
     for(prop in obj){
@@ -594,43 +687,123 @@ zita.delay = function(callback, delay){
 // delay 0.01ms
 // to force the callback function push into of event loop
 zita.defer = function(callback){
-    var args = _concat([callback, 0.01], _slice(arguments, 1));
-    return zita.delay.apply(zita, args);
+    return zita.delay.apply(zita, _concat([callback, 0.01], _slice(arguments, 1)));
 };
 
 
 // string
 
-(function(){
+var _fChar = (function(){
 
-    var map = {
+        var encode = {
+            '<' : '&lt;',
+            '>' : '&gt;',
+            '&' : '&amp;'
+        };
+
+        return {
+            encode : encode,
+            decode : zita.invert(encode),
+
             escape : {
-                '<'  : '&lt;',
-                '>'  : '&gt;',
-                '&'  : '&amp;',
-                '"'  : '&quot;',
-                '\'' : '&#x27;'
-            }
-        },
-        pattern = {};
+                '\b' : '\\b',
+                '\t' : '\\t',
+                '\n' : '\\n',
+                '\f' : '\\f',
+                '\r' : '\\r',
+                '"'  : '\\"',
+                '\\' : '\\\\'
+            },
 
-    map.unescape = zita.invert(map.escape);
-    pattern = {
-        escape : new RegExp('[' + zita.keys(map.escape).join('') + ']', 'g'),
-        unescape : new RegExp('(' + zita.keys(map.unescape).join('|') + ')', 'g')
+            camelCase : function(all, first){
+                return first.toUpperCase();
+            }
+        }
+
+    })(),
+
+    _rChar = {
+        encode : new RegExp('[' + zita.keys(_fChar.encode).join('') + ']', 'g'),
+        decode : new RegExp('(' + zita.keys(_fChar.decode).join('|') + ')', 'g'),
+
+        escape : /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+
+        trim : /^\s+|\s+$/g,
+        camelCase : /-([\da-z])/gi,
+
+        query : /^[^?]*\?(.+)$/
     };
 
-    _each('escape unescape'.split(' '), function(method){
-        zita[method] = function(str){
-            if(str == null) return '';
-            return (str + '').replace(pattern[method], function(match){
-                return map[method][match];
-            });
-        };
+_each('encode decode'.split(' '), function(method){
+    zita[method] = function(str){
+        if(str == null) return '';
+        return (str + '').replace(_rChar[method], function(match){
+            return _fChar[method][match];
+        });
+    };
+});
+
+zita.escape = function(str){
+    if(str == null) return '';
+    return (str + '').replace(_rChar.escape, function(match){
+        return _fChar.escape[match] || '\\u' + ('0000' + match.charCodeAt(0).toString(16)).slice(-4);
     });
+};
 
-})();
+zita.trim = function(str){
+    return (str + '').replace(_rChar.trim, '');
+};
 
+zita.camelCase = function(str){
+    return (str + '').replace(_rChar.camelCase, _fChar.camelCase);
+};
+
+zita.truncate = function(str, length, truncate){
+    var len = Math.max(length || 30, 0);
+
+    if(str.length < len) return str;
+    return str.slice(0, len) + (truncate == undefined ? '...' : truncate);
+};
+
+zita.parseQuery = function(str, separator){
+    var query = (str + '').match(_rChar.query),
+        key, value;
+
+    if(query == null) return {};
+
+    query = query.pop();
+    separator = separator || '&';
+
+    return zita.reduce(query.split(separator), function(hash, pair){
+        if(pair.indexOf('=') != -1){
+            pair = decodeURIComponent(pair).split('=');
+
+            key = pair.shift();
+            // in case, the value of this part include a equal sign
+            // we should join them again
+            value = pair.join('=');
+
+            if(value != undefined){
+                value = value.replace('+', ' ');
+            }
+
+            // if more than one part match the key
+            // we should push them in an array
+            if(key in hash){
+                zita.isArray(hash[key]) || (hash[key] = [hash[key]]);
+                hash[key].push(value);
+            }else{
+                hash[key] = value;
+            }
+        }
+
+        return hash;
+    }, {});
+};
+
+zita.parseJSON = function(str){
+
+};
 
 // tools
 
