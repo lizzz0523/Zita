@@ -43,16 +43,7 @@ var _slice = function(arr, start, end){
     };
 
 
-// list : array or object
-
-var IS_DONTENUM_BUG = (function(){
-
-        for(var prop in {toString : 1}){
-            if(prop == 'toString') return false;
-        }
-        return true;
-
-    })();
+// list: array or object
 
 var _each = zita.each = function(list, iterator){
     var keys,
@@ -303,12 +294,12 @@ zita.toArray = function(list){
 };
 
 zita.toQuery = function(list){
-    // todo : convert a list to a query string
+    // todo: convert a list to a query string
 };
 
 zita.toJSON = (function(){
 
-    // reference : http://www.ecma-international.org/ecma-262/5.1/#sec-15.12.3
+    // reference: http://www.ecma-international.org/ecma-262/5.1/#sec-15.12.3
 
     function quote(str) {
         return  '"' + zita.escape(str) + '"';
@@ -465,6 +456,15 @@ zita.without = function(arr){
 
 
 // object
+
+var IS_DONTENUM_BUG = (function(){
+
+        for(var prop in {toString : 1}){
+            if(prop == 'toString') return false;
+        }
+        return true;
+
+    })();
 
 var _has = zita.has = function(obj, key){
     return nativeHasProperty.call(obj, key);
@@ -631,15 +631,6 @@ zita.isFinite = function(obj){
     // !isNaN(parseFloat(obj)) for numeric check
     // isFinite(obj) for finite check
     return !isNaN(parseFloat(obj)) && isFinite(obj);
-};
-
-
-// class
-
-zita.extend = function(dest){
-    /*
-        todo: class extend
-    */
 };
 
 
@@ -1356,8 +1347,17 @@ zita.fsm = (function(){
 
 })();
 
+
+// class
+
 zita.view = function(){
     // todo: view creator, the base class for the ZOE jQuery Effects Kit
+};
+
+zita.extend = function(dest){
+    /*
+        todo: class extend
+    */
 };
 
 })(window);
