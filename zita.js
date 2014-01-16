@@ -303,7 +303,7 @@ zita.toArray = function(list){
 };
 
 zita.toQuery = function(list){
-
+    // todo : convert a list to a query string
 };
 
 zita.toJSON = (function(){
@@ -529,39 +529,50 @@ zita.invert = function(obj){
     return res;
 };
 
-zita.equal = function(a, b){
-    var type;
+zita.equal = (function(){
 
-    // for non-object condition: string/boolean/number/undefined/null
-    if(a === b) return a !== 0 || 1 / a === 1 / b;
-    // for null, fast track
-    if(a == null || b == null) return a === b;
+    function walk(a, b, aStack, bStack){
+        var type;
 
-    if((type = _type(a)) != _type(b)) return false;
-    switch(type){
-        case 'string' :
-        case 'function' :
-        case 'error' :
-            return String(a) == String(b);
+        // for non-object condition: string/boolean/number/undefined/null
+        if(a === b) return a !== 0 || 1 / a === 1 / b;
+        // for null, fast track
+        if(a == null || b == null) return a === b;
 
-        case 'boolean' :
-        case 'number' :
-        case 'date' :
-            // +a/+b will focus object invoke function valueOf
-            // so we can compare them in primitive form
-            return +a == +b || (a !== a && b !== b) || (a == 0 && 1 / a == 1 / b);
+        if((type = _type(a)) != _type(b)) return false;
+        switch(type){
+            case 'string' :
+            case 'function' :
+            case 'error' :
+                return String(a) == String(b);
 
-        case 'regexp' :
-            return a.source == b.source
-            && a.global == b.global
-            && a.multiline == b.multiline
-            && a.ignoreCase == b.ignoreCase;
-    }
+            case 'boolean' :
+            case 'number' :
+            case 'date' :
+                // +a/+b will focus object invoke function valueOf
+                // so we can compare them in primitive form
+                return +a == +b || (a !== a && b !== b) || (a == 0 && 1 / a == 1 / b);
 
-    /*
-        todo: do a deep comparison of object
-    */
-};
+            case 'regexp' :
+                return a.source == b.source
+                && a.global == b.global
+                && a.multiline == b.multiline
+                && a.ignoreCase == b.ignoreCase;
+
+            default :
+                if(type != 'object' || type != 'array') return false;
+        }
+
+        /*
+            todo: do a deep comparison of object
+        */
+    };
+
+    return function(a, b){
+        return walk(a, b, [], []);
+    };
+
+})();
 
 var _type = zita.type = (function(){
 
@@ -847,8 +858,9 @@ zita.parseQuery = function(str, separator){
 };
 
 zita.parseJSON = function(str){
-
+    // todo: parse a string to a json object
 };
+
 
 // tools
 
@@ -1343,5 +1355,9 @@ zita.fsm = (function(){
     return Fsm.create;
 
 })();
+
+zita.view = function(){
+    // todo: view creator, the base class for the ZOE jQuery Effects Kit
+};
 
 })(window);
