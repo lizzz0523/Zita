@@ -22,6 +22,7 @@ var nativePush = zita.arr.push,
     nativeFind = zita.arr.find,
     nativeFilter = zita.arr.filter,
     nativeKeys = zita.obj.keys,
+    nativeHasProperty = zita.obj.hasOwnProperty,
     nativeToString = zita.obj.toString,
     nativeBind = zita.noop.bind;
 
@@ -42,7 +43,7 @@ var _slice = function(arr, start, end){
     };
 
 
-// array or object
+// list : array or object
 
 var IS_DONTENUM_BUG = (function(){
 
@@ -194,14 +195,6 @@ zita.contains = function(list, target){
     });
 };
 
-zita.without = function(list){
-    var args = _slice(arguments, 1);
-
-    return zita.filter(list, function(value){
-        return !zita.contains(args, value);
-    });
-};
-
 zita.invoke = function(list, method){
     var args = _slice(arguments, 2),
         isFunc = zita.isFunction(method);
@@ -218,11 +211,11 @@ zita.pluck = function(list, key){
 };
 
 zita.max = function(list, iterator){
-    var proxy, max;
+    var max = {proxy : -Infinity, value : -Infinity};
 
-    max = {proxy : -Infinity, value : -Infinity};
     _each(list, function(value){
-        proxy = iterator ? iterator.apply(zita, arguments) : value;
+        var proxy = iterator ? iterator.apply(zita, arguments) : value;
+
         if(proxy > max.proxy){
             max.proxy = proxy;
             max.value = value;
@@ -233,11 +226,11 @@ zita.max = function(list, iterator){
 };
 
 zita.min = function(list, iterator){
-    var proxy, min;
+    var min = {proxy : Infinity, value : Infinity};
 
-    min = {proxy : Infinity, value : Infinity};
     _each(list, function(value){
-        proxy = iterator ? iterator.apply(zita, arguments) : value;
+        var proxy = iterator ? iterator.apply(zita, arguments) : value;
+
         if(proxy < min.proxy){
             min.proxy = proxy;
             min.value = value;
@@ -266,6 +259,8 @@ zita.merge = function(dest){
         src, keys,
         i = 0,
         j = 0;
+
+    if(dest == null) return null;
 
     if(zita.isArray(dest)){
         nativePush.apply(dest, args);
@@ -307,7 +302,13 @@ zita.toArray = function(list){
     }
 };
 
+zita.toQuery = function(list){
+
+};
+
 zita.toJSON = (function(){
+
+    // reference : http://www.ecma-international.org/ecma-262/5.1/#sec-15.12.3
 
     function quote(str) {
         return  '"' + zita.escape(str) + '"';
@@ -317,9 +318,14 @@ zita.toJSON = (function(){
         return (num < 10 ? '0' : '') + num;
     }
 
-    function toJSON(value){
+    function toJSON(value, key){
+        if(value && _type(value.toJSON) == 'function'){
+            return value.toJSON(key);
+        }
+
         switch(_type(value)){
             case 'date' :
+                if(value.toJSON)
                 return isFinite(value.valueOf())
                 ? value.getUTCFullYear()      + '-' +
                 fill(value.getUTCMonth() + 1) + '-' +
@@ -338,36 +344,40 @@ zita.toJSON = (function(){
         return value;
     }
 
-    function walk(key, list){
+    function walk(key, list, stack){
         var value = list[key],
-            partial = [],
-            k, v,
-            len;
+            partial = [];
 
         // if the value has function toJSON,
         // invoke it
-        if (value && _type(value.toJSON) == 'function'){
-            value = value.toJSON(key);
-        }else{
-            value = toJSON(value);
-        }
+        value = toJSON(value, key);
 
         switch (_type(value)){
             case 'array' :
-                if(!value) return 'null';
+                if(zita.contains(stack, value)){
+                    throw TypeError('Converting circular structure to JSON');
+                }
                 
+                stack.push(value);
                 partial = zita.map(value, function(v, k, value){
-                    return walk(k, value) || 'null';
+                    return (v = walk(k, value, stack)) || 'null';
                 });
+                stack.pop();
 
                 return partial.length === 0
                 ? '[]'
                 : '[' + partial.join(',') + ']';
 
             case 'object' :
+                if(zita.contains(stack, value)){
+                    throw TypeError('Converting circular structure to JSON');
+                }
+
+                stack.push(value);
                 partial = zita.map(value, function(v, k, value){
-                    return quote(k) + ':' + walk(k, value);
+                    return (v = walk(k, value, stack)) ? quote(k) + ':' + v : '';
                 });
+                stack.pop();
 
                 return partial.length === 0
                 ? '{}'
@@ -377,18 +387,35 @@ zita.toJSON = (function(){
                 return quote(value);
 
             case 'number' :
-                return (isFinite(value) ? value : null) + '';
+                return isFinite(value) ? String(value) : 'null';
+
+            case 'boolean' :
+            case 'null' :
+                return String(value);
+
+            case 'regexp' :
+            case 'error' :
+                return '{}';
 
             default :
-                return value + '';
+                // function / xml / undefined
+                return undefined;
         }
     }
     
     return function(list){
-        return walk('', {'': list});
+        // add the native support
+        if(JSON && _type(JSON.stringify) == 'function'){
+            return JSON.stringify(list);
+        }
+
+        return walk('', {'': list}, []);
     };
 
 })();
+
+
+// array
 
 zita.range = function(start, stop, step){
     var res = [],
@@ -428,12 +455,27 @@ zita.rest = function(arr, index){
     return _slice(arr, Math.max(index || 1, 0));
 };
 
+zita.without = function(arr){
+    var args = _slice(arguments, 1);
+
+    return zita.filter(arr, function(value){
+        return !zita.contains(args, value);
+    });
+};
+
+
+// object
+
+var _has = zita.has = function(obj, key){
+    return nativeHasProperty.call(obj, key);
+};
+
 zita.keys = function(obj){
     var res = [],
         prop;
     
     for(prop in obj){
-        if(!obj.hasOwnProperty(prop)) continue;
+        if(!_has(obj, prop)) continue;
         res.push(prop);
     }
 
@@ -456,7 +498,7 @@ zita.values = function(obj){
         prop;
 
     for(prop in obj){
-        if(!obj.hasOwnProperty(prop)) continue;
+        if(!_has(obj, prop)) continue;
         res.push(obj[prop]);
     }
 
@@ -490,18 +532,23 @@ zita.invert = function(obj){
 zita.equal = function(a, b){
     var type;
 
-    // for non-object condition: string/boolean/number
+    // for non-object condition: string/boolean/number/undefined/null
     if(a === b) return a !== 0 || 1 / a === 1 / b;
+    // for null, fast track
+    if(a == null || b == null) return a === b;
 
     if((type = _type(a)) != _type(b)) return false;
     switch(type){
         case 'string' :
         case 'function' :
+        case 'error' :
             return String(a) == String(b);
 
         case 'boolean' :
         case 'number' :
         case 'date' :
+            // +a/+b will focus object invoke function valueOf
+            // so we can compare them in primitive form
             return +a == +b || (a !== a && b !== b) || (a == 0 && 1 / a == 1 / b);
 
         case 'regexp' :
@@ -704,7 +751,6 @@ var _fChar = (function(){
         return {
             encode : encode,
             decode : zita.invert(encode),
-
             escape : {
                 '\b' : '\\b',
                 '\t' : '\\t',
@@ -725,7 +771,6 @@ var _fChar = (function(){
     _rChar = {
         encode : new RegExp('[' + zita.keys(_fChar.encode).join('') + ']', 'g'),
         decode : new RegExp('(' + zita.keys(_fChar.decode).join('|') + ')', 'g'),
-
         escape : /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
 
         trim : /^\s+|\s+$/g,
@@ -737,7 +782,7 @@ var _fChar = (function(){
 _each('encode decode'.split(' '), function(method){
     zita[method] = function(str){
         if(str == null) return '';
-        return (str + '').replace(_rChar[method], function(match){
+        return String(str).replace(_rChar[method], function(match){
             return _fChar[method][match];
         });
     };
@@ -745,28 +790,28 @@ _each('encode decode'.split(' '), function(method){
 
 zita.escape = function(str){
     if(str == null) return '';
-    return (str + '').replace(_rChar.escape, function(match){
+    return String(str).replace(_rChar.escape, function(match){
         return _fChar.escape[match] || '\\u' + ('0000' + match.charCodeAt(0).toString(16)).slice(-4);
     });
 };
 
 zita.trim = function(str){
-    return (str + '').replace(_rChar.trim, '');
+    return String(str).replace(_rChar.trim, '');
 };
 
 zita.camelCase = function(str){
-    return (str + '').replace(_rChar.camelCase, _fChar.camelCase);
+    return String(str).replace(_rChar.camelCase, _fChar.camelCase);
 };
 
 zita.truncate = function(str, length, truncate){
     var len = Math.max(length || 30, 0);
 
     if(str.length < len) return str;
-    return str.slice(0, len) + (truncate == undefined ? '...' : truncate);
+    return String(str).slice(0, len) + (truncate == undefined ? '...' : truncate);
 };
 
 zita.parseQuery = function(str, separator){
-    var query = (str + '').match(_rChar.query),
+    var query = String(str).match(_rChar.query),
         key, value;
 
     if(query == null) return {};
