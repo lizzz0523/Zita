@@ -21,6 +21,7 @@ var nativePush = zita.arr.push,
     nativeReduce = zita.arr.reduce,
     nativeFind = zita.arr.find,
     nativeFilter = zita.arr.filter,
+    nativeIndexOf = zita.arr.indexOf,
     nativeKeys = zita.obj.keys,
     nativeHasProperty = zita.obj.hasOwnProperty,
     nativeToString = zita.obj.toString,
@@ -46,13 +47,13 @@ var _slice = function(arr, start, end){
 // list: array or object
 
 var _each = zita.each = function(list, iterator){
-    var keys,
-        i = 0;
+    var keys, i = 0;
 
     if(list == null) return;
 
     // use the native ecmascript 5 each;
     if(list.forEach && list.forEach === nativeForEach){
+        // don't support break the loop 
         return list.forEach(iterator, zita);
     }
 
@@ -109,7 +110,7 @@ zita.reduce = function(list, iterator, memo){
 
     if(list.reduce && list.reduce === nativeReduce){
         iterator = zita.bind(iterator, zita);
-        return res != undefined ? list.reduce(iterator, memo) : list.reduce(iterator);
+        return res != undefined ? list.reduce(iterator, res) : list.reduce(iterator);
     }
 
     _each(list, function(value){
@@ -140,7 +141,7 @@ zita.map = function(list, iterator){
 zita.find = function(list, iterator){
     var res;
 
-    if(list.find && list.find == nativeFind){
+    if(list.find && list.find === nativeFind){
         return list.find(iterator, zita);
     }
 
@@ -345,9 +346,7 @@ zita.toJSON = (function(){
 
         switch (_type(value)){
             case 'array' :
-                if(zita.contains(stack, value)){
-                    throw TypeError('Converting circular structure to JSON');
-                }
+                if(zita.contains(stack, value)) return '[]';
                 
                 stack.push(value);
                 partial = zita.map(value, function(v, k, value){
@@ -360,9 +359,7 @@ zita.toJSON = (function(){
                 : '[' + partial.join(',') + ']';
 
             case 'object' :
-                if(zita.contains(stack, value)){
-                    throw TypeError('Converting circular structure to JSON');
-                }
+                if(zita.contains(stack, value)) return '{}';
 
                 stack.push(value);
                 partial = zita.map(value, function(v, k, value){
@@ -408,6 +405,26 @@ zita.toJSON = (function(){
 
 // array
 
+var _binarySearch = function(arr, target){
+    var low = 0,
+        high = arr.length,
+        mid, desc;
+
+    desc = arr[low] > arr[high - 1];
+
+    while(low < high){
+        mid = (low + high) >>> 1; // equal to Math.floor((low + high) / 2);
+
+        if(arr[mid] === target){
+            high = mid; // little-endian
+        }else{
+            desc ^ arr[mid] < target ? low = mid + 1 : high = mid;
+        }
+    }
+
+    return low;
+};
+
 zita.range = function(start, stop, step){
     var res = [],
         i, len;
@@ -431,6 +448,7 @@ zita.range = function(start, stop, step){
 zita.first = function(arr, length){
     var len = Math.min(length || 1, arr.length);
 
+    if(arr == null) return void 0;
     if(len < 0) return [];
     return _slice(arr, 0, len);
 };
@@ -438,11 +456,13 @@ zita.first = function(arr, length){
 zita.last = function(arr, length){
     var len = Math.min(length || 1, arr.length);
 
+    if(arr == null) return void 0;
     if(len < 0) return _slice(arr);
     return _slice(arr, arr.length - len);
 };
 
 zita.rest = function(arr, index){
+    if(arr == null) return void 0;
     return _slice(arr, Math.max(index || 1, 0));
 };
 
@@ -452,6 +472,41 @@ zita.without = function(arr){
     return zita.filter(arr, function(value){
         return !zita.contains(args, value);
     });
+};
+
+zita.uniq = function(arr, sorted){
+    return zita.reduce(arr, function(seen, value, index){
+        if(index == 0 || (sorted ? seen[seen.length - 1] != value : !zita.contains(seen, value))){
+            seen.push(value);
+        }
+        return seen;
+    }, []);
+};
+
+zita.indexOf = function(arr, target, sorted){
+    var res = 0,
+        len = arr.length;
+
+    if(arr == null) return -1;
+
+    if(sorted){
+        if(_type(sorted) == 'number'){
+            res = sorted < 0 ? Math.max(0, len + sorted) : sorted;
+        }else{
+            res = _binarySearch(arr, target);
+            return arr[res] == target ? res : -1;
+        }
+    }
+
+    if(arr.indexOf && arr.indexOf === nativeIndexOf){
+        return arr.indexOf(target, res);
+    }
+
+    for(; res < len; res++){
+        if(arr[res] === target) return res;
+    }
+
+    return -1;
 };
 
 
