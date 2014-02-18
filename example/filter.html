@@ -2,22 +2,16 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
-<title>Zita:debounce</title>
-<style>
-	#hotarea {
-		width: 100px;
-		height: 100px;
-		background: red;
-	}
-</style>
+<title>Zita:filter</title>
 </head>
 <body>
-<div id="hotarea"></div>
 <script type="text/javascript" src="../zita.js"></script>
 <script type="text/javascript">
-document.getElementById('hotarea').onmousemove = zita.debounce(function(){
-	console.log('debounce');
+var res = zita.filter(zita.range(3, 10), function(value, key){
+    return value % 2 == 0;
 });
+
+console.log(res);
 </script>
 </body>
 </html>
