@@ -125,10 +125,6 @@ var _slice = function(arr, start, end){
         return nativeSlice.call(arr, start, end);
     },
 
-    _concat = function(arr, src){
-        return nativeConcat.call(arr, src);
-    },
-
     _string = function(obj){
         return nativeToString.call(obj);
     },
@@ -149,8 +145,7 @@ var _keys = Object.keys || function(obj){
         prop, len;
     
     for(prop in obj){
-        if(!_has(obj, prop)) continue;
-        res.push(prop);
+        if(_has(obj, prop)) res.push(prop);
     }
 
     // fix don't enum bug
@@ -169,8 +164,7 @@ var _values = function(obj){
         prop, len;
 
     for(prop in obj){
-        if(!_has(obj, prop)) continue;
-        res.push(obj[prop]);
+        if(_has(obj, prop)) res.push(obj[prop]);
     }
 
     // fix don't enum bug
@@ -206,6 +200,81 @@ var _each = function(list, iterator){
     return list;
 };
 
+var _some = function(list, iterator){
+    var res = false;
+
+    _each(list, function(value, key, list){
+        // because the nativeForEach function couldn't break by return false
+        // and I use this || condition to make it stop
+        // if(res || (res = !!iterator.apply(zita, arguments))) return false;
+        if(res = !!iterator.call(zita, value, key, list)) return false;
+    });
+
+    return res;
+};
+
+var _every = function(list, iterator){
+    var res = true;
+
+    _each(list, function(value, key, list){
+        // because the nativeForEach function couldn't break by return false
+        // and I use this && condition to make it stop
+        // if(res && !(res = !!iterator.apply(zita, arguments))) return false;
+        if(!(res = !!iterator.call(zita, value, key, list))) return false;
+    });
+
+    return res;
+};
+
+var _map = function(list, iterator){
+    var res = [];
+
+    _each(list, function(value, key, list){
+        res.push(iterator.call(zita, value, key, list));
+    });
+
+    return res;
+};
+
+var _reduce = function(list, iterator, memo){
+    var res = memo;
+
+    _each(list, function(value, key, list){
+        if(res == undefined){
+            res = value;
+        }else{
+            res = iterator.call(zita, res, value, key, list);
+        }
+    });
+
+    return res;
+};
+
+var _find = function(list, iterator){
+    var res;
+
+    _each(list, function(value, key, list){
+        if(iterator.call(zita, value, key, list)){
+            res = value;
+            return false;
+        }
+    });
+
+    return res;
+};
+
+var _filter = function(list, iterator){
+    var res = [];
+
+    _each(list, function(value, key, list){
+        if(iterator.call(zita, value, key, list)){
+            res.push(value);
+        }
+    });
+
+    return res;
+};
+
 // function _flat can make structure like [[], [], [], [], ...]
 // become a flatten (a single level) one ([])
 var _flat = function(arr, shallow, memo){
@@ -236,51 +305,10 @@ var _flat = function(arr, shallow, memo){
     return res;
 };
 
-var _binarySearch = function(arr, target){
-    var mid,
-        low = 0,
-        high = arr.length;
-
-    while(low < high){
-        mid = (low + high) >>> 1; // equal to Math.floor((low + high) / 2);
-        arr[mid] < target ? low = mid + 1 : high = mid;
-    }
-
-    return low;
-};
-
-var _quickSort = function(arr){
-　　var left = [],
-　　    right = [],
-        pivot,
-        i = -1,
-        len;
-
-　　if(arr.length <= 1){
-        return arr;
-    }
-
-    pivot = arr.splice(arr.length >>> 1, 1)[0];
-    len = arr.length;
-
-　　while(++i < len){
-　　　　if(arr[i] < pivot) {
-　　　　　　left.push(arr[i]);
-　　　　} else {
-　　　　　　right.push(arr[i]);
-　　　　}
-　　}
-
-　　return nativeConcat.call(_quickSort(left), [pivot], _quickSort(right));
-};
-
 var _type = function(obj){
     var type = typeof obj;
 
-    if(obj == null){
-        return String(obj);
-    }
-
+    if(obj == null) return String(obj);
     return type == 'object' || type == 'function' ? mType[_string(obj)] || 'object' : type;
 };
 
@@ -295,6 +323,43 @@ var _isFunction = typeof /./ != 'function'
 }
 : function(obj){
     return _type(obj) == 'function';
+};
+
+var _binarySearch = function(arr, target){
+    var pivot,
+        low = 0,
+        high = arr.length;
+
+    while(low < high){
+        pivot = (low + high) >>> 1; // equal to Math.floor((low + high) / 2);
+        arr[pivot] < target ? low = pivot + 1 : high = pivot;
+    }
+
+    return low;
+};
+
+var _quickSort = function(arr){
+　　var left = [],
+　　    right = [],
+        pivot,
+        i = -1,
+        len;
+
+　　if(arr.length <= 1) return arr;
+
+    len = arr.length;
+    pivot = len >>> 1;
+　　while(++i < len){
+        if(i == pivot) continue;
+
+　　　　if(arr[i] < arr[pivot]){
+　　　　　　left.push(arr[i]);
+　　　　}else{
+　　　　　　right.push(arr[i]);
+　　　　}
+　　}
+    
+    return nativeConcat.call(_quickSort(left), arr[pivot], _quickSort(right));
 };
 
 var _delay = function(callback, delay, args, context){
@@ -318,128 +383,86 @@ zita.each = function(list, iterator){
 };
 
 zita.some = function(list, iterator){
-    var res = false;
-
+    // use the native ecmascript 5 some;
     if(list.some && list.som === nativeSome){
         return list.some(iterator, zita);
     }
 
-    _each(list, function(){
-        // because the nativeForEach function couldn't break by return false
-        // and I use this || condition to make it stop
-        // if(res || (res = !!iterator.apply(zita, arguments))) return false;
-        if(res = !!iterator.apply(zita, arguments)) return false;
-    });
-
-    return res;
+    return _some(list, iterator);
 };
 
 zita.every = function(list, iterator){
-    var res = true;
-
+    // use the native ecmascript 5 every;
     if(list.every && list.every === nativeEvery){
         return list.every(iterator, zita);
     }
 
-    _each(list, function(){
-        // because the nativeForEach function couldn't break by return false
-        // and I use this && condition to make it stop
-        // if(res && !(res = !!iterator.apply(zita, arguments))) return false;
-        if(!(res = !!iterator.apply(zita, arguments))) return false;
-    });
-
-    return res;
+    return _every(list, iterator);
 };
 
 zita.map = function(list, iterator){
-    var res = [];
-
+    // use the native ecmascript 5 map;
     if(list.map && list.map === nativeMap){
         return list.map(iterator, zita);
     }
 
-    _each(list, function(){
-        res.push(iterator.apply(zita, arguments));
-    });
-
-    return res;
+    return _map(list, iterator);
 };
 
 zita.reduce = function(list, iterator, memo){
-    var res = memo;
+    var callback;
 
+    // use the native ecmascript 5 reduce;
     if(list.reduce && list.reduce === nativeReduce){
-        iterator = zita.bind(iterator, zita);
-        return res != undefined ? list.reduce(iterator, res) : list.reduce(iterator);
+        callback = iterator;
+        iterator = function(seen, value, key, list){
+            return callback.call(zita, seen, value, key, list);
+        }
+        return memo != undefined ? list.reduce(iterator, memo) : list.reduce(iterator);
     }
 
-    _each(list, function(value){
-        if(res == undefined){
-            res = value;
-        }else{
-            res = iterator.apply(zita, _concat([res], _slice(arguments)));
-        }
-    });
-
-    return res;
+    return _reduce(list, iterator, memo);
 };
 
 zita.invoke = function(list, method){
     var args = _slice(arguments, 2),
         isFunc = _isFunction(method);
 
-    return zita.map(list, function(value){
+    return _map(list, function(value){
         return (isFunc ? method : value[method]).apply(value, args);
     });
 };
 
 zita.pluck = function(list, key){
-    return zita.map(list, function(value){
+    return _map(list, function(value){
         return value[key];
     });
 };
 
 zita.find = function(list, iterator){
-    var res;
-
     if(list.find && list.find === nativeFind){
         return list.find(iterator, zita);
     }
 
-    _each(list, function(value){
-        if(iterator.apply(zita, arguments)){
-            res = value;
-            return false;
-        }
-    });
-
-    return res;
+    return _find(list, iterator);
 };
 
 zita.filter = function(list, iterator){
-    var res = [];
-
     if(list.filter && list.filter === nativeFilter){
         return list.filter(iterator, zita);
     }
 
-    _each(list, function(value){
-        if(iterator.apply(zita, arguments)){
-            res.push(value);
-        }
-    });
-
-    return res;
-};
+    return _filter(list, iterator);
+}
 
 zita.reject = function(list, iterator){
-    return zita.filter(list, function(){
-        return !iterator.apply(zita, arguments);
+    return _filter(list, function(value, key, list){
+        return !iterator.call(zita, value, key, list);
     });
 };
 
 zita.where = function(list, props, first){
-    return zita[first ? 'find' : 'filter'](list, function(value){
+    return (first ? _find : _filter)(list, function(value){
         return zita.matches(value, props);
     });
 };
@@ -447,8 +470,8 @@ zita.where = function(list, props, first){
 zita.max = function(list, iterator){
     var max = {proxy : -Infinity, value : -Infinity};
 
-    _each(list, function(value){
-        var proxy = iterator ? iterator.apply(zita, arguments) : value;
+    _each(list, function(value, key, list){
+        var proxy = iterator ? iterator.call(zita, value, key, list) : value;
 
         if(proxy > max.proxy){
             max.proxy = proxy;
@@ -462,8 +485,8 @@ zita.max = function(list, iterator){
 zita.min = function(list, iterator){
     var min = {proxy : Infinity, value : Infinity};
 
-    _each(list, function(value){
-        var proxy = iterator ? iterator.apply(zita, arguments) : value;
+    _each(list, function(value, key, list){
+        var proxy = iterator ? iterator.call(zita, value, key, list) : value;
 
         if(proxy < min.proxy){
             min.proxy = proxy;
@@ -585,7 +608,7 @@ zita.toJSON = (function(){
                 if(zita.contains(stack, value)) return '[]';
                 
                 stack.push(value);
-                partial = zita.map(value, function(v, k, value){
+                partial = _map(value, function(v, k, value){
                     return (v = walk(k, value, stack)) || 'null';
                 });
                 stack.pop();
@@ -598,7 +621,7 @@ zita.toJSON = (function(){
                 if(zita.contains(stack, value)) return '{}';
 
                 stack.push(value);
-                partial = zita.map(value, function(v, k, value){
+                partial = _map(value, function(v, k, value){
                     return (v = walk(k, value, stack)) ? quote(k) + ':' + v : '';
                 });
                 stack.pop();
@@ -681,32 +704,75 @@ zita.rest = function(arr, length){
 };
 
 zita.contains = function(arr, target){
-    return zita.some(arr, function(value){
+    return _some(arr, function(value){
         return value === target;
     });
 };
 
-zita.intersection = function(arr){
-    var args = _slice(arguments, 1);
-    return zita.filter(zita.uniq(arr), function(value){
-        return zita.every(args, function(rest){
-            return zita.contains(rest, value);
+// zita.intersection = function(arr){
+//     var args = _slice(arguments, 1);
+//     return _filter(zita.uniq(arr), function(value){
+//         return _every(args, function(rest){
+//             return zita.contains(rest, value);
+//         });
+//     });
+// };
+
+zita.intersection = (function(){
+
+    function comp(a, b){
+        if(a !== b){
+            if(a > b || typeof a == 'undefined') return 1;
+            if(a < b || typeof b == 'undefined') return -1;
+        }
+        return 0;
+    }
+
+    function sort(arr){
+        return arr.sort(comp);
+    }
+
+    function next(arr, cur){
+        var res = cur + 1;
+        if(res >= arr.length) return -1;
+        while(arr[res] == arr[cur] && res++ < arr.length);
+        return res;
+    }
+
+    function filter(a, b){
+        var i = j = 0,
+            res = [];
+
+        while(i != -1 && j != -1){
+            if(a[i] == b[j]){
+                res.push(a[i]);
+                i = next(a, i);
+                j = next(b, j);
+            }else{
+                if(a[i] < b[j]){
+                    i = next(a, i);
+                }else{
+                    j = next(b, j);
+                }
+            }
+        }
+
+        return res;
+    }
+
+    return function(arr){
+        var args = _slice(arguments, 1),
+            res = sort(arr);
+
+        _each(args, function(rest){
+            rest = sort(rest);
+            res = filter(res, rest);
         });
-    });
-};
 
-zita.intersection2 = function(arr){
-    var args = _slice(arguments, 1),
-        res = _quickSort(zita.uniq(arr));
-
-    _each(args, function(rest){
-        res = zita.filter(res, function(value){
-            return zita.indexOf(_quickSort(rest), value, true) != -1;
-        });
-    });
-
-    return res;
-};
+        return res;
+    };
+    
+})();
 
 zita.without = function(arr){
     return zita.difference(arr, _slice(arguments, 1));
@@ -715,13 +781,13 @@ zita.without = function(arr){
 zita.difference = function(arr){
     // at first, we should flatten (merge) all array which need to be detected 
     var args = _flat(_slice(arguments, 1), true);
-    return zita.filter(arr, function(value){
+    return _filter(arr, function(value){
         return !zita.contains(args, value);
     });
 };
 
 zita.uniq = function(arr, sorted){
-    return zita.reduce(arr, function(seen, value, index){
+    return _reduce(arr, function(seen, value, index){
         if(index == 0 || (sorted ? seen[seen.length - 1] != value : !zita.contains(seen, value))){
             seen.push(value);
         }
@@ -734,7 +800,7 @@ zita.union = function(){
 };
 
 zita.flatten = function(arr, shallow){
-    if(shallow && zita.every(arr, _isArray)){
+    if(shallow && _every(arr, _isArray)){
         return nativeConcat.apply([], arr);
     }
     return _flat(arr, shallow, []);
@@ -752,7 +818,7 @@ zita.indexOf = function(arr, target, sorted){
             res = _binarySearch(arr, target);
             return arr[res] == target ? res : -1;
         }else{
-            sorted = sorted >>> 0; // force the variable covert to a number
+            sorted = sorted >>> 0; // force the variable covert to a number : false -> 0
             res = (sorted < 0 ? Math.max(0, len + sorted) : sorted) - 1;
         }
     }
@@ -885,7 +951,7 @@ zita.invert = function(obj){
 
 zita.matches = function(obj, props){
     if(obj === props) return true;
-    return zita.every(props, function(value, key){
+    return _every(props, function(value, key){
         return key in obj && obj[key] === value;
     });
 };
@@ -893,11 +959,10 @@ zita.matches = function(obj, props){
 zita.pick = function(obj){
     var res = {},
         keys = _slice(arguments, 1),
-        i = -1,
         len = keys.length;
 
-    while(++i < len){
-        res[keys[i]] = obj[keys[i]];
+    while(len--){
+        res[keys[len]] = obj[keys[len]];
     }
 
     return res;
@@ -906,11 +971,10 @@ zita.pick = function(obj){
 zita.omit = function(obj){
     var res = {},
         keys = zita.difference(_keys(obj), _slice(arguments, 1)),
-        i = -1,
         len = keys.length;
 
-    while(++i < len){
-        res[keys[i]] = obj[keys[i]];
+    while(len--){
+        res[keys[len]] = obj[keys[len]];
     };
 
     return res;
@@ -931,18 +995,19 @@ zita.bind = (function(){
         // make sure browser support the functing binding
         // and not be overrided
         if(callback.bind && callback.bind === nativeBind){
-            return nativeBind.apply(callback,  _slice(arguments, 1));
+            return nativeBind.apply(callback, _slice(arguments, 1));
         }
 
         args = _slice(arguments, 2);
+
         return bound = function(){
-            if(!(this instanceof bound)) return callback.apply(context, _concat(args, _slice(arguments)));
+            if(!(this instanceof bound)) return callback.apply(context, args.concat(_slice(arguments)));
 
             proxy.prototype = callback.prototype;
             self = new proxy();
             proxy.prototype = null;
 
-            callback.apply(self, _concat(args, _slice(arguments)));
+            callback.apply(self, args.concat(_slice(arguments)));
             
             return self;
         };
@@ -954,14 +1019,13 @@ zita.curry = function(callback){
     var args = _slice(arguments, 1);
 
     return function(){
-        return callback.apply(zita, _concat(args, _slice(arguments)));
+        return callback.apply(zita, args.concat(_slice(arguments)));
     };
 };
 
 zita.uncurry = function(callback){
     return function(context){
-        var args = _slice(arguments, 1);
-        return callback.apply(context, args);
+        return callback.apply(context, _slice(arguments, 1));
     };
 };
 
@@ -973,12 +1037,10 @@ zita.cache = function(callback, hasher){
     var res = {};
 
     hasher = hasher || zita.identity;
-
     return function(){
-        var args = _slice(arguments);
-            key = hasher.apply(zita, args);
+        var key = hasher.apply(zita, arguments);
 
-        return _has(res[key]) ? res[key] : (res[key] = callback.apply(zita, args));
+        return _has(res[key]) ? res[key] : (res[key] = callback.apply(zita, arguments));
     }
 };
 
@@ -1073,7 +1135,7 @@ zita.once = function(callback){
     return function(){
         if(!active) return res;
 
-        res = callback.apply(zita, _slice(arguments));
+        res = callback.apply(zita, arguments);
         callback = null;
         active = false;
         
@@ -1128,7 +1190,7 @@ zita.parseQuery = function(str, separator){
     query = query.pop();
     separator = separator || '&';
 
-    return zita.reduce(query.split(separator), function(hash, pair){
+    return _reduce(query.split(separator), function(hash, pair){
         if(pair.indexOf('=') != -1){
             pair = decodeURIComponent(pair).split('=');
 
