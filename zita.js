@@ -2,7 +2,8 @@
     by liz
 */
 
-;(function(exports, undefined){
+;(function(exports
+    ){
 
 var zita = exports.zita = {
         version : '0.0.1',
@@ -136,6 +137,29 @@ var _slice = function(arr, start, end){
 
 // core method
 
+var _type = function(obj){
+    var type = typeof obj;
+
+    if(obj == null) return String(obj);
+
+    return type == 'object' || type == 'function' 
+    ? mType[_string(obj)] || 'object' 
+    : type;
+};
+
+var _isArray = Array.isArray || function(obj){
+    return _type(obj) == 'array';
+};
+
+// fix chrome(1-12) bug and use a faster solution
+var _isFunction = typeof /./ != 'function'
+? function(obj){
+    return typeof obj == 'function';
+}
+: function(obj){
+    return _type(obj) == 'function';
+};
+
 var _has = function(obj, key){
     return nativeHasProperty.call(obj, key);
 };
@@ -184,13 +208,20 @@ var _each = function(list, iterator){
 
     if(list == null) return;
 
+    // in this core each method
+    // we use while loop instead of for loop
+    // for improving the efficiency
+
+    // and use list.length in break condition
+    // for reserving dynamic
+
     if(_isArray(list)){
-        // if list is array
+        // if list is an array
         while(++i < list.length){
             if(iterator.call(zita, list[i], i, list) === false) break;
         }
     }else{
-        // if list is object
+        // if list is an object
         keys = _keys(list);
         while(++i < keys.length){
             if(iterator.call(zita, list[keys[i]], keys[i], list) === false) break;
@@ -240,7 +271,7 @@ var _reduce = function(list, iterator, memo){
     var res = memo;
 
     _each(list, function(value, key, list){
-        if(res == undefined){
+        if(res == void 0){
             res = value;
         }else{
             res = iterator.call(zita, res, value, key, list);
@@ -275,9 +306,9 @@ var _filter = function(list, iterator){
     return res;
 };
 
-// function _flat can make structure like [[], [], [], [], ...]
+// function _flatten can make structure like [[], [], [], [], ...]
 // become a flatten (a single level) one ([])
-var _flat = function(arr, shallow, memo){
+var _flatten = function(arr, shallow, memo){
     var res = memo || [],
         value,
         i = -1,
@@ -297,7 +328,7 @@ var _flat = function(arr, shallow, memo){
             if(shallow){
                 nativePush.apply(res, value);
             }else{
-                _flat(value, shallow, res);
+                _flatten(value, shallow, res);
             }
         }
     }
@@ -305,24 +336,21 @@ var _flat = function(arr, shallow, memo){
     return res;
 };
 
-var _type = function(obj){
-    var type = typeof obj;
-
-    if(obj == null) return String(obj);
-    return type == 'object' || type == 'function' ? mType[_string(obj)] || 'object' : type;
+var _compare = function(a, b){
+    if(a !== b){
+        if(a > b || a == void 0) return 1;
+        if(a < b || b == void 0) return -1;
+    }
+    return 0;
 };
 
-var _isArray = Array.isArray || function(obj){
-    return _type(obj) == 'array';
-};
+var _nextIndex = function(arr, prev){
+    var next = prev + 1;
 
-// fix chrome(1-12) bug and use a faster solution
-var _isFunction = typeof /./ != 'function'
-? function(obj){
-    return typeof obj == 'function';
-}
-: function(obj){
-    return _type(obj) == 'function';
+    if(next >= arr.length) return -1;
+    while(_compare(arr[next], arr[prev]) == 0 && next++ < arr.length);
+    
+    return next;
 };
 
 var _binarySearch = function(arr, target){
@@ -332,38 +360,151 @@ var _binarySearch = function(arr, target){
 
     while(low < high){
         pivot = (low + high) >>> 1; // equal to Math.floor((low + high) / 2);
-        arr[pivot] < target ? low = pivot + 1 : high = pivot;
+        _compare(arr[pivot], target) < 0 ? low = pivot + 1 : high = pivot;
     }
 
     return low;
 };
 
-var _quickSort = function(arr){
-　　var left = [],
-　　    right = [],
-        pivot,
-        i = -1,
-        len;
+var _quickSort = (function(){
 
-　　if(arr.length <= 1) return arr;
+    function sort(arr, low, high){            
+        var pivot = arr[(low + high) >>> 1],
+            i = low,
+            j = high,
+            temp;
 
-    len = arr.length;
-    pivot = len >>> 1;
-　　while(++i < len){
-        if(i == pivot) continue;
+        if(low < high){
+            while(true){
+                while(_compare(arr[i], pivot) < 0) i++;
+                while(_compare(arr[j], pivot) > 0) j--;
+                
+                if(i < j){
+                    temp = arr[i];
+                    arr[i] = arr[j];
+                    arr[j] = temp;
 
-　　　　if(arr[i] < arr[pivot]){
-　　　　　　left.push(arr[i]);
-　　　　}else{
-　　　　　　right.push(arr[i]);
-　　　　}
-　　}
-    
-    return nativeConcat.call(_quickSort(left), arr[pivot], _quickSort(right));
+                    continue;
+                }
+                
+                break;
+            }
+
+            sort(arr, low, i - 1);
+            sort(arr, j + 1, high);
+        }
+
+        return arr;
+    }
+
+    return function(arr){
+        return sort(_slice(arr), 0, arr.length - 1);
+    }
+
+})();
+
+var _unique = function(arr){
+    var res = [];
+        i = 0,
+        len = arr.length;
+
+    res.push(arr[0]);
+
+    while(++i < len){
+        if(res[res.length - 1] != arr[i]){
+            res.push(arr[i]);
+        }
+    }
+
+    return res;
 };
+
+var _difference = (function(){
+
+    function filter(a, b){
+        var i = j = 0,
+            res = [];
+
+        while(i != -1 && j != -1){
+            if(_compare(a[i], b[j]) == 0){
+                i = _nextIndex(a, i);
+                j = _nextIndex(b, j);
+            }else{
+                if(_compare(a[i], b[j]) < 0){
+                    res.push(a[i]);
+                    i = _nextIndex(a, i);
+                }else{
+                    res.push(b[j]);
+                    j = _nextIndex(b, j);
+                }
+            }
+        }
+
+        if(i == -1 && j != -1){
+            nativePush.apply(res, _slice(b, j));
+        }
+
+        if(j == -1 && i != -1){
+            nativePush.apply(res, _slice(a, i));
+        }
+
+        return res;
+    }
+
+    return function(arr, rest){
+        var res = arr,
+            i = -1,
+            len = rest.length;
+
+        while(++i < len){
+            res = filter(res, rest[i]);
+        }
+
+        return res;
+    };
+
+})();
+
+var _intersection = (function(){
+
+    function filter(a, b){
+        var i = j = 0,
+            res = [];
+
+        while(i != -1 && j != -1){
+            if(_compare(a[i], b[j]) == 0){
+                res.push(a[i]);
+                i = _nextIndex(a, i);
+                j = _nextIndex(b, j);
+            }else{
+                if(_compare(a[i], b[j]) < 0){
+                    i = _nextIndex(a, i);
+                }else{
+                    j = _nextIndex(b, j);
+                }
+            }
+        }
+
+        return res;
+    }
+
+    return function(arr, rest){
+        var res = arr,
+            i = -1,
+            len = rest.length;
+
+        while(++i < len){
+            res = filter(res, rest[i]);
+        }
+
+        return res;
+    };
+
+})();
 
 var _delay = function(callback, delay, args, context){
     context = context || window;
+
     return setTimeout(function(){
         callback.apply(context, args);
     }, delay);
@@ -418,7 +559,7 @@ zita.reduce = function(list, iterator, memo){
         iterator = function(seen, value, key, list){
             return callback.call(zita, seen, value, key, list);
         }
-        return memo != undefined ? list.reduce(iterator, memo) : list.reduce(iterator);
+        return memo != void 0 ? list.reduce(iterator, memo) : list.reduce(iterator);
     }
 
     return _reduce(list, iterator, memo);
@@ -519,7 +660,7 @@ zita.merge = function(dest){
     if(dest == null) return null;
 
     if(_isArray(dest)){
-        nativePush.apply(dest, _flat(args, true));
+        nativePush.apply(dest, _flatten(args, true));
     }else{
         while(++i < len){
             _each(args[i], function(value, key){
@@ -646,7 +787,7 @@ zita.toJSON = (function(){
 
             default :
                 // function / xml / undefined
-                return undefined;
+                return void 0;
         }
     }
     
@@ -709,101 +850,90 @@ zita.contains = function(arr, target){
     });
 };
 
-// zita.intersection = function(arr){
-//     var args = _slice(arguments, 1);
-//     return _filter(zita.uniq(arr), function(value){
-//         return _every(args, function(rest){
-//             return zita.contains(rest, value);
-//         });
-//     });
-// };
+zita.sort = function(arr){
+    if(arr.length < 1000){
+        return arr.sort(_compare);
+    }else{
+        return _quickSort(arr);
+    }
+};
 
-zita.intersection = (function(){
+zita.unique = function(arr){
+    var sorted = false,
+        res = [];
 
-    function comp(a, b){
-        if(a !== b){
-            if(a > b || typeof a == 'undefined') return 1;
-            if(a < b || typeof b == 'undefined') return -1;
+    if(typeof arr == 'boolean'){
+        sorted = arr;
+        arr = arguments[1];
+    }
+
+    if(sorted){
+        return _unique(arr);
+    }
+
+    _each(arr, function(value, index){
+        if(!zita.contains(res, value)){
+            res.push(value);
         }
-        return 0;
+    });
+
+    return res;
+};
+
+zita.difference = function(arr){
+    var sorted = false,
+        args = _slice(arguments, 1);
+
+    if(typeof arr == 'boolean'){
+        sorted = arr;
+        arr = args.shift();
     }
 
-    function sort(arr){
-        return arr.sort(comp);
+    if(sorted){
+        return _difference(arr, args);
     }
 
-    function next(arr, cur){
-        var res = cur + 1;
-        if(res >= arr.length) return -1;
-        while(arr[res] == arr[cur] && res++ < arr.length);
-        return res;
+    // at first, we should flatten (merge) all array which need to be detected 
+    args = _flatten(args, true);
+
+    return _filter(zita.unique(arr), function(value){
+        return !zita.contains(args, value);
+    });
+};
+
+zita.intersection = function(arr){
+    var sorted = false,
+        args = _slice(arguments, 1);
+
+    if(typeof arr == 'boolean'){
+        sorted = arr;
+        arr = args.shift();
     }
 
-    function filter(a, b){
-        var i = j = 0,
-            res = [];
-
-        while(i != -1 && j != -1){
-            if(a[i] == b[j]){
-                res.push(a[i]);
-                i = next(a, i);
-                j = next(b, j);
-            }else{
-                if(a[i] < b[j]){
-                    i = next(a, i);
-                }else{
-                    j = next(b, j);
-                }
-            }
-        }
-
-        return res;
+    if(sorted){
+        return _intersection(arr, args);
     }
 
-    return function(arr){
-        var args = _slice(arguments, 1),
-            res = sort(arr);
-
-        _each(args, function(rest){
-            rest = sort(rest);
-            res = filter(res, rest);
+    return _filter(zita.unique(arr), function(value){
+        return _every(args, function(rest){
+            return zita.contains(rest, value);
         });
-
-        return res;
-    };
-    
-})();
+    });
+};
 
 zita.without = function(arr){
     return zita.difference(arr, _slice(arguments, 1));
 };
 
-zita.difference = function(arr){
-    // at first, we should flatten (merge) all array which need to be detected 
-    var args = _flat(_slice(arguments, 1), true);
-    return _filter(arr, function(value){
-        return !zita.contains(args, value);
-    });
-};
-
-zita.uniq = function(arr, sorted){
-    return _reduce(arr, function(seen, value, index){
-        if(index == 0 || (sorted ? seen[seen.length - 1] != value : !zita.contains(seen, value))){
-            seen.push(value);
-        }
-        return seen;
-    }, []);
-};
-
 zita.union = function(){
-    return zita.uniq(_flat(_slice(arguments), true));
+    return zita.unique(_flatten(_slice(arguments), true));
 };
 
 zita.flatten = function(arr, shallow){
     if(shallow && _every(arr, _isArray)){
         return nativeConcat.apply([], arr);
     }
-    return _flat(arr, shallow, []);
+    return _flatten(arr, shallow, []);
 };
 
 zita.indexOf = function(arr, target, sorted){
@@ -824,7 +954,7 @@ zita.indexOf = function(arr, target, sorted){
     }
 
     if(arr.indexOf && arr.indexOf === nativeIndexOf){
-        return res != undefined ? arr.indexOf(target, res) : arr.indexOf(target);
+        return res != void 0 ? arr.indexOf(target, res) : arr.indexOf(target);
     }
 
     while(++res < len){
@@ -844,7 +974,7 @@ zita.lastIndexOf = function(arr, target, from){
     }
 
     if(arr.lastIndexOf && arr.lastIndexOf === nativeLastIndexOf){
-        return res != undefined ? arr.lastIndexOf(target, res) : arr.lastIndexOf(target);
+        return res != void 0 ? arr.lastIndexOf(target, res) : arr.lastIndexOf(target);
     }
 
     while(res--){
@@ -870,7 +1000,7 @@ _each('Number Boolean String Date RegExp'.split(' '), function(type){
 });
 
 zita.isUndefined = function(obj){
-    return obj == undefined;
+    return obj == void 0;
 };
 
 zita.isNull = function(obj){
@@ -1178,7 +1308,7 @@ zita.truncate = function(str, length, truncate){
     var len = Math.max(length || 30, 0);
 
     if(str.length < len) return str;
-    return String(str).slice(0, len) + (truncate == undefined ? '...' : truncate);
+    return String(str).slice(0, len) + (truncate == void 0 ? '...' : truncate);
 };
 
 zita.parseQuery = function(str, separator){
@@ -1199,7 +1329,7 @@ zita.parseQuery = function(str, separator){
             // we should join them again
             value = pair.join('=');
 
-            if(value != undefined){
+            if(value != void 0){
                 value = value.replace('+', ' ');
             }
 
@@ -1227,7 +1357,7 @@ zita.parseJSON = (function(){
         if(value && _type(value) == 'object'){
             _each(value, function(k, v, value){
                 v = walk(k, value);
-                if(v != undefined){
+                if(v != void 0){
                     value[k] = v;
                 }else{
                     delete value[k];
@@ -1314,7 +1444,7 @@ zita.data = (function(){
 
         cacheData = cache[id];
 
-        if(data != undefined){
+        if(data != void 0){
             cacheData[name] = data;
         }
 
@@ -1426,7 +1556,7 @@ zita.ticker = (function(settings){
     
     function stop(){
         cancelAnimFrame(requestId);
-        requestId = undefined;
+        requestId = void 0;
     }
 
     return {
@@ -1659,7 +1789,7 @@ zita.fsm = (function(){
             var cache = this.cache,
                 index;
 
-            if(cache[name] != undefined){
+            if(cache[name] != void 0){
                 index = cache[name];
             }else{
                 index = cache.length++;
@@ -1673,7 +1803,7 @@ zita.fsm = (function(){
         },
 
         getState : function(index){
-            return this.cache[index != undefined ? index : this.index];
+            return this.cache[index != void 0 ? index : this.index];
         },
 
         bindEvent : function(name, callback){
@@ -1695,7 +1825,7 @@ zita.fsm = (function(){
             next.index = action[this.index];
             next.state = this.getState(next.index);
 
-            if(next.index == undefined){
+            if(next.index == void 0){
                 this.event.emit('error', 'State Transition Error!');
                 return;
             }
