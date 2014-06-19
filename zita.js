@@ -2,8 +2,7 @@
     by liz
 */
 
-;(function(exports
-    ){
+;(function(exports){
 
 var zita = exports.zita = {
         version : '0.0.1',
