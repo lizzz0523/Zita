@@ -371,9 +371,7 @@ var _quickSort = (function(){
         var pivot = arr[(low + high) >>> 1],
             i = low,
             j = high,
-            tmpi,
-            tmpj;
-            // temp;
+            temp;
 
         if(low < high){
             while(true){
@@ -382,21 +380,17 @@ var _quickSort = (function(){
                 
                 if(i < j){
                     
-                    // if tmpi === tmpj,
+                    // if arr[i] === arr[j],
                     // left point move next, right point move previ and continue loop
                     // otherwise sorter will fail into endless loop 
-                    tmpi = arr[i];
-                    tmpj = arr[j];
-                    if ( tmpi !== tmpj ) {
-                        arr[i] = tmpj;
-                        arr[j] = tmpi;
+                    if(arr[i] !== arr[j]) {
+                        temp = arr[i];
+                        arr[i] = arr[j];
+                        arr[j] = temp;
                     } else {
                         i++;
                         j--;
                     }
-                    // temp = arr[i];
-                    // arr[i] = arr[j];
-                    // arr[j] = temp;
 
                     continue;
                 }
